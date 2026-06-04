@@ -69,6 +69,25 @@ function analyzeTranscript(tp) {
   return res;
 }
 
+// --- Calendar mirror (optional): keep the day's blocks current on every session close ---
+// Unlike the once-a-day email (a one-shot push), the calendar is a continuously-updated mirror,
+// so work added after the 20:30 run — or any time of day — still lands in it. Self-gated + fire-and-forget.
+function calendarEnabled() {
+  try {
+    const c = JSON.parse(fs.readFileSync(path.join(lib.ROOT, 'config.json'), 'utf8'));
+    return !!(c.calendar && c.calendar.enabled && c.calendar.calendarId);
+  } catch { return false; }
+}
+function spawnCalendarSync(dateStr) {
+  try {
+    const script = path.join(__dirname, 'worklog-calendar.js');
+    if (!fs.existsSync(script)) return;
+    const { spawn } = require('child_process');
+    // detached + unref: a slow or failed network sync must NEVER delay or break session close
+    spawn(process.execPath, [script, '--sync', dateStr], { detached: true, stdio: 'ignore', windowsHide: true }).unref();
+  } catch { /* non-fatal */ }
+}
+
 try {
   // Capture the real session interval for Calendar blocks (cheap, no AI).
   // Records {start,end,project,sessionId}; dedup-by-sessionId happens at read time
@@ -105,6 +124,16 @@ try {
     }
   }
 } catch { /* non-fatal */ }
+
+// Refresh the Calendar mirror for the day(s) this session touched — only if calendar is enabled
+// and the session contributed work. Runs AFTER the fallback so an auto-entry is included too.
+try {
+  if (marker && marker.startTime && marker.project && calendarEnabled()) {
+    const endDate = lib.dateKey(d);
+    const days = (marker.startDate && marker.startDate !== endDate) ? [marker.startDate, endDate] : [endDate];
+    for (const day of days) spawnCalendarSync(day);
+  }
+} catch { /* non-fatal — calendar must never break session close */ }
 
 // cleanup marker
 if (markerPath) { try { fs.unlinkSync(markerPath); } catch { /* ignore */ } }

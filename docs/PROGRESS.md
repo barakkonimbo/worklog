@@ -20,17 +20,17 @@
 | מקור קנוני + תיעוד בפרויקט | ✅ הושלם |
 | Installer + הפצה (skill/zip, גרסאות) | ✅ הושלם ונבדק (אידמפוטנטי) |
 | הופץ לגיטהאב (dev repo + קטלוג) | ✅ worklog + youleap-Implementers/Features |
-| Google Calendar (opt-in, OAuth, DPAPI) | ✅ נבנה ואומת חי — setup/test/sync/idempotent (v0.7.0) |
+| Google Calendar (opt-in, OAuth, DPAPI) | ✅ נבנה ואומת — setup/test/sync/idempotent (v0.7.0); **mirror מתמשך** sync בכל SessionEnd (v0.7.3) |
 | ממשק on-demand (`send`/`status`/`help`/שפת-פלט) | ✅ נבנה ואומת — 18/18 בדיקות מבודדות (v0.7.2) |
 | תמיכה ב-macOS/Linux (תזמון) | ⏳ לא התחיל |
 
 ---
 
 ## 🎯 הצעד הבא (Next Up)
-1. **חבר צוות → גרסה 0.7.2** — לשלוח zip מעודכן, `/work-journal-setup`, ואופציונלית `--setup` למייל ו/או ליומן. כולל `send`/`status`/`help`/בחירת שפה.
+1. **חבר צוות → גרסה 0.7.3** — לשלוח zip מעודכן, `/work-journal-setup`, ואופציונלית `--setup` למייל ו/או ליומן. כולל `send`/`status`/`help`/בחירת שפה + יומן mirror מתמשך.
 2. **Cross-platform** — תזמון `launchd`/`cron` ל-macOS/Linux (ההתראות כבר תומכות mac/linux).
 3. **שעות בבחירה בהתקנה** — לשאול שעות ב-`--setup` (כרגע ברירת מחדל + שינוי קל אח״כ).
-4. **Calendar — שיפורי E1/E3/E4** (עיגון-לרשומה, חפיפת חלונות, flush אחרי קריסה) לפי טבלת ה-Known Limitations.
+4. **Calendar — שיפורי E1/E3** (עיגון-לרשומה, חפיפת חלונות) לפי טבלת ה-Known Limitations. (E4 כבר ממותן ב-v0.7.3 — sync בכל SessionEnd.)
 
 ---
 
@@ -42,6 +42,14 @@
 ---
 
 ## 🗓️ לוג כרונולוגי
+
+### 2026-06-04 — help (v0.7.2) + יומן כ-mirror מתמשך (v0.7.3)
+**נעשה:**
+- **v0.7.2:** `/worklog help` — מסך אחד עם כל הפקודות (סקיל + CLI; מנוע `worklog-config.js help`). תיקון `install.js` (שימור calendar+language ברישום משימות מחדש). הותקן חי + נדחף לשני הריפו.
+- **v0.7.3 — יומן כ-mirror מתמשך:** פער שזיהה המשתמש — סנכרון היומן היה קשור ל-20:30/ידני בלבד, אז עבודה אחרי 20:30 לא הופיעה. הבחנה: **מייל = push חד-פעמי · יומן = mirror מתמשך**. `worklog-session-end.js` מסנכרן בכל סגירת סשן (detached fire-and-forget; calendar-gated + רק-אם הסשן תרם; פיצול-חצות → 2 ימים). הנרטיב מתחדש ב-20:30/`send` בלבד (לא AI בכל סשן); הבלוקים תמיד.
+- **10/10 בדיקות מבודדות** (stub calendar: spawn enabled/disabled, midnight-split, עמידות). אומת שהשבועי כבר catch-all (קורא יומנים גולמיים → תופס ערב שהמייל פספס). D14 + CALENDAR-SPEC + 6 מסמכים.
+
+**הבא:** build + push 0.7.3 לשני הריפו + התקנה חיה.
 
 ### 2026-06-04 — מימוש ממשק on-demand (v0.7.1)
 **נעשה:**

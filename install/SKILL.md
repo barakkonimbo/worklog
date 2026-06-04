@@ -60,7 +60,7 @@ guide them — do NOT run it for them (browser consent needed):
 2. In their terminal: `node "%USERPROFILE%\.claude\hooks\worklog-calendar.js" --setup` (paste ID+secret,
    approve in the browser; token stored DPAPI-encrypted).
 3. Test: `node "%USERPROFILE%\.claude\hooks\worklog-calendar.js" --test`.
-Sync then runs automatically at the 20:30 end-of-day run. See INSTALL.md for the full guide.
+Sync runs on **every session close** (the calendar is a continuously-updated mirror — late work after 20:30 still lands in it) and at the 20:30 run (which also refreshes the summary event). See INSTALL.md for the full guide.
 
 ## Change settings later
 Map the user's intent to `worklog-config.js` (each change re-registers the tasks automatically):

@@ -66,6 +66,7 @@
 - אם לא תועד → `analyzeTranscript()` מוציא את הבקשה האנושית הראשונה (`type:"user"` עם בלוק `text`,
   לא `tool_result`, לא עוטף `<...>`) וסופר בקשות. אם `count >= 2` ויש טקסט → כותב `(אוטו) <snippet>`.
 - **לוכד את מרווח הסשן** ל-`.sessions/<date>.jsonl` (`{start,end,project,sessionId}`, פיצול-חצות E6) — הבסיס לבלוקי היומן.
+- **מסנכרן יומן (v0.7.3):** אם `calendar.enabled` והסשן תרם עבודה → spawn **detached** של `worklog-calendar.js --sync` ליום/לימים (פיצול-חצות) — fire-and-forget, לא חוסם סגירה. כך היומן הוא mirror מתמשך (לא רק ב-20:30).
 - תמיד מנקה את ה-marker. Exit 0 (לא-חוסם).
 
 ### `worklog-summary.js` — מחולל הסיכום
@@ -108,7 +109,7 @@
 - `--setup` (OAuth2 loopback, `--env`/prompt) · `--test` · `--sync [date]` · `--disable`.
 - Token `{client_id,client_secret,refresh_token}` מוצפן **DPAPI** ב-`.calendar-cred`; access token מתחדש בכל ריצה (REST, ללא npm).
 - `--sync`: סשני-היום + רשומות הלוג → `computeBlocks` → אירועי בלוק (timed) + "סיכום היום" (all-day) → **regenerate-and-replace** לפי תיוג `worklog=<date>`, ביומן הייעודי "Work Journal" בלבד.
-- נקרא מ-`worklog-summary.js` בריצת הסוף-יום (spawn נפרד, fail-safe). מקור המרווחים: `.sessions/<date>.jsonl`.
+- נקרא כ-`--sync` משני מקומות (spawn fail-safe): **`worklog-session-end.js`** בכל סגירת סשן (mirror מתמשך — בלוקים) ו-**`worklog-summary.js`** בריצת ה-20:30 (בלוקים + חידוש אירוע הסיכום). מקור המרווחים: `.sessions/<date>.jsonl`.
 
 ---
 
