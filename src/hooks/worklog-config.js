@@ -11,6 +11,8 @@
  *   node worklog-config.js weekly off|on        toggle weekly email
  *   node worklog-config.js weekly.day Sunday    set weekly day
  *   node worklog-config.js weekly.time 08:00    set weekly time
+ *   node worklog-config.js calendar off|on      toggle Google Calendar sync (needs --setup first)
+ *   node worklog-config.js calendar.summary off toggle the all-day "summary" event in Calendar
  *
  * Multiple changes in one call are allowed. Config lives in ~/.claude/work-journal/config.json.
  */
@@ -27,12 +29,17 @@ const CONFIG = path.join(ROOT, 'config.json');
 const NODE = process.execPath;
 const SUMMARY = path.join(__dirname, 'worklog-summary.js');
 const CRED = path.join(ROOT, '.email-cred');
+const CAL_CRED = path.join(ROOT, '.calendar-cred');
 
 function load() {
   let c = {};
   try { c = JSON.parse(fs.readFileSync(CONFIG, 'utf8')); } catch { /* defaults */ }
   const d = schedule.defaultConfig();
-  return { email: { ...d.email, ...(c.email || {}) }, weekly: { ...d.weekly, ...(c.weekly || {}) } };
+  return {
+    email: { ...d.email, ...(c.email || {}) },
+    weekly: { ...d.weekly, ...(c.weekly || {}) },
+    calendar: { ...d.calendar, ...(c.calendar || {}) },
+  };
 }
 function save(c) { fs.mkdirSync(ROOT, { recursive: true }); fs.writeFileSync(CONFIG, JSON.stringify(c, null, 2) + '\n', 'utf8'); }
 function applyTasks(c) { return schedule.registerTasks({ node: NODE, summaryScript: SUMMARY, config: c }); }
@@ -42,6 +49,9 @@ function show(c) {
   console.log(schedule.describe(c));
   if (c.email && c.email.enabled && !fs.existsSync(CRED)) {
     console.log('\n⚠️  מייל מופעל אבל אין סיסמה שמורה — הריצו:  node "' + path.join(__dirname, 'worklog-email.js').replace(/\\/g, '/') + '" --setup');
+  }
+  if (c.calendar && c.calendar.enabled && !fs.existsSync(CAL_CRED)) {
+    console.log('\n⚠️  יומן מופעל אבל אין token שמור — הריצו:  node "' + path.join(__dirname, 'worklog-calendar.js').replace(/\\/g, '/') + '" --setup');
   }
 }
 
@@ -62,6 +72,12 @@ function applyChange(c, key, val) {
     case 'email.to': c.email.to = val; return true;
     case 'weekly.day': c.weekly.day = schedule.parseDays(val)[0] || 'Sunday'; return true;
     case 'weekly.time': c.weekly.time = val; return true;
+    case 'calendar':
+      if (on(val)) c.calendar.enabled = true; else if (off(val)) c.calendar.enabled = false; else return false;
+      return true;
+    case 'calendar.summary':
+      if (on(val)) c.calendar.summaryEvent = true; else if (off(val)) c.calendar.summaryEvent = false; else return false;
+      return true;
     default: return false;
   }
 }

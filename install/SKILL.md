@@ -49,10 +49,23 @@ yourself, because the app-password prompt is hidden and needs their real termina
 Defaults once enabled: daily **20:30 Sun–Thu**, weekly **Sunday 08:00**. If **no** — nothing else needed;
 they still get the 18:00 toast and `/worklog summary` on demand.
 
+## After install — offer Google Calendar (optional)
+Calendar sync is OFF by default. If the user wants their day mirrored to Google Calendar (time-blocks
+per project + a daily summary event, in a dedicated "Work Journal" calendar — never touching real events),
+guide them — do NOT run it for them (browser consent needed):
+1. Create an OAuth client (one-time) at https://console.cloud.google.com: New Project → enable **Google
+   Calendar API** → OAuth consent screen **Internal** (Workspace) → Credentials → OAuth client ID →
+   **Desktop app** → copy Client ID + Secret. (Don't start the $300 trial. Prefer Internal — External
+   testing tokens expire after 7 days.)
+2. In their terminal: `node "%USERPROFILE%\.claude\hooks\worklog-calendar.js" --setup` (paste ID+secret,
+   approve in the browser; token stored DPAPI-encrypted).
+3. Test: `node "%USERPROFILE%\.claude\hooks\worklog-calendar.js" --test`.
+Sync then runs automatically at the 20:30 end-of-day run. See INSTALL.md for the full guide.
+
 ## Change settings later
 Map the user's intent to `worklog-config.js` (each change re-registers the tasks automatically):
-`email off` / `email on` · `email.time 21:00` · `email.days Sun-Thu` · `weekly.day Sunday` ·
-`weekly.time 08:00`. Run it with no args to show current settings.
+`email off` / `email on` · `calendar off` / `calendar on` · `email.time 21:00` · `email.days Sun-Thu` ·
+`weekly.day Sunday` · `weekly.time 08:00`. Run it with no args to show current settings.
 
 ## Uninstall (only when asked)
 ```bash
@@ -66,6 +79,8 @@ node "$HOME/.claude/skills/work-journal-setup/uninstall.js" --purge    # also de
 - skill → `~/.claude/skills/worklog/` (the `/worklog` manual control)
 - a short block merged into `~/.claude/CLAUDE.md`
 - SessionStart + SessionEnd entries merged into `~/.claude/settings.json` (existing hooks preserved; backed up)
-- scheduled task (Windows): `WorkJournal-Notify` 18:00 Sun–Thu (toast only). Email tasks
-  (`WorkJournal-DailyEmail` 20:30 Sun–Thu, `WorkJournal-Weekly` Sunday 08:00) are added **only if the
-  user enables email**.
+- scheduled task (Windows): `WorkJournal-Notify` 18:00 Sun–Thu (toast only). The final-run task
+  `WorkJournal-DailyEmail` 20:30 Sun–Thu is added if **email OR calendar** is enabled (it sends the
+  email if on, and syncs Google Calendar if on); `WorkJournal-Weekly` Sunday 08:00 is added only if email is on.
+- optional, off by default: **email** (`worklog-email.js --setup`) and **Google Calendar**
+  (`worklog-calendar.js --setup`) — both store credentials DPAPI-encrypted.

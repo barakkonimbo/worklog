@@ -41,6 +41,7 @@ function defaultConfig() {
       time: '20:30', days: ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday'],
     },
     weekly: { enabled: true, day: 'Sunday', time: '08:00' },
+    calendar: { enabled: false, calendarId: '', summaryEvent: true, minBlockMinutes: 15, maxGapMinutes: 90 },
   };
 }
 
@@ -59,6 +60,11 @@ function describe(config) {
     lines.push('• יעד מייל: ' + (c.email.to || '—'));
   } else {
     lines.push('• מייל: כבוי (רק התראה + /worklog summary לפי דרישה)');
+  }
+  if (c.calendar && c.calendar.enabled) {
+    lines.push('• יומן Google: סנכרון יומי (סוף יום) ליומן "Work Journal"' + (c.calendar.summaryEvent === false ? ' — בלוקים בלבד' : ' — בלוקים + סיכום'));
+  } else {
+    lines.push('• יומן Google: כבוי');
   }
   return lines.join('\n');
 }
@@ -84,11 +90,15 @@ function registerTasks({ node, summaryScript, config }) {
     // fixed interim notification (everyone)
     task('WorkJournal-Notify', '--daily', '18:00', parseDays(['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday']), 'Interim daily summary + notification (18:00, Sun-Thu)'),
   ];
-  if (c.email && c.email.enabled) {
-    lines.push(task('WorkJournal-DailyEmail', '--daily --email', c.email.time || '20:30', parseDays(c.email.days), 'Final daily summary + email'));
-    if (!c.weekly || c.weekly.enabled !== false) {
-      lines.push(task('WorkJournal-Weekly', '--weekly --email', (c.weekly && c.weekly.time) || '08:00', parseDays([(c.weekly && c.weekly.day) || 'Sunday']), 'Weekly recap + email'));
-    }
+  const emailOn = !!(c.email && c.email.enabled);
+  const calOn = !!(c.calendar && c.calendar.enabled);
+  // Final end-of-day run (20:30). Email delivery and calendar sync each self-gate inside;
+  // register the task if EITHER is enabled so calendar works even without email.
+  if (emailOn || calOn) {
+    lines.push(task('WorkJournal-DailyEmail', '--daily --email', (c.email && c.email.time) || '20:30', parseDays(c.email && c.email.days), 'Final daily summary (email if enabled, calendar sync if enabled)'));
+  }
+  if (emailOn && (!c.weekly || c.weekly.enabled !== false)) {
+    lines.push(task('WorkJournal-Weekly', '--weekly --email', (c.weekly && c.weekly.time) || '08:00', parseDays([(c.weekly && c.weekly.day) || 'Sunday']), 'Weekly recap + email'));
   }
   lines.push("Write-Output 'ok'");
 

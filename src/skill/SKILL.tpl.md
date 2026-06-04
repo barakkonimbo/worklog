@@ -42,15 +42,20 @@ re-registers the scheduled tasks automatically. Map the user's intent to one cal
 - Daily email time: `… worklog-config.js email.time 21:00`
 - Days: `… worklog-config.js email.days Sun-Thu`  (or `Sun,Mon,Tue,Wed,Thu`)
 - Weekly: `… worklog-config.js weekly off` · `weekly.day Sunday` · `weekly.time 08:00`
+- Google Calendar OFF / ON: `… worklog-config.js calendar off` / `calendar on` (needs `--setup` first)
 
-Two-level model: first choice is whether email is on at all (default OFF). If on, it uses the
+Two-level model: first choice is whether email/calendar are on at all (default OFF). If on, email uses the
 defaults — daily **20:30 Sun–Thu**, weekly **Sunday 08:00** — or the user's own times/days.
 The **18:00 Sun–Thu** interim notification (toast only) is fixed and always on.
 
-## 6. Enable email for the first time
-Email is OFF by default. Enabling needs a one-time app-password setup with hidden input, so tell
-the user to run it in their OWN terminal (PowerShell/cmd) — not via this skill:
-`node "<HOOKS>/worklog-email.js" --setup`   then `node "<HOOKS>/worklog-email.js" --test`.
+## 6. Enable email / Google Calendar for the first time
+Both are OFF by default and need a one-time setup with hidden input / browser consent, so tell the user
+to run it in their OWN terminal (PowerShell/cmd) — not via this skill:
+- **Email:** `node "<HOOKS>/worklog-email.js" --setup`  then  `… --test` (Gmail App Password).
+- **Google Calendar:** create a Desktop OAuth client in Google Cloud (enable Calendar API · consent screen
+  Internal · copy Client ID+Secret), then `node "<HOOKS>/worklog-calendar.js" --setup`  then  `… --test`.
+  Syncs time-blocks + a daily summary event to a dedicated "Work Journal" calendar at the 20:30 run.
+  (Full step-by-step in the project's INSTALL.md.)
 
 ## Notes
 - The summary generator prevents recursion (`WORKLOG_DISABLE=1`), so running it from a session is safe.

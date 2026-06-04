@@ -65,6 +65,7 @@
 - טוען את ה-marker; `loggedThisSession()` סורק את קובץ היום לרשומה ב-`HH:MM >= startTime` (אותו יום).
 - אם לא תועד → `analyzeTranscript()` מוציא את הבקשה האנושית הראשונה (`type:"user"` עם בלוק `text`,
   לא `tool_result`, לא עוטף `<...>`) וסופר בקשות. אם `count >= 2` ויש טקסט → כותב `(אוטו) <snippet>`.
+- **לוכד את מרווח הסשן** ל-`.sessions/<date>.jsonl` (`{start,end,project,sessionId}`, פיצול-חצות E6) — הבסיס לבלוקי היומן.
 - תמיד מנקה את ה-marker. Exit 0 (לא-חוסם).
 
 ### `worklog-summary.js` — מחולל הסיכום
@@ -75,7 +76,7 @@
 - `fallbackSummary()`: אם קלוד נכשל/לא זמין → מקבץ רשומות לפי פרויקט (ללא AI). הקובץ תמיד נוצר.
 - `--email`: שולח גם מייל (אם מופעל). 18:00 רץ בלי הדגל (ביניים); 20:30 איתו (סופי).
 - שבועי: אוסף את **7 הימים שקדמו להיום** (עד אתמול) — "השבוע שעבר" כשרץ ראשון בבוקר. כולל חלק "נשאר פתוח".
-- אחרי הכתיבה: `worklog-notify.js` (התראה לחיצה) + `worklog-email.js` (אם `--email` ומופעל).
+- אחרי הכתיבה: `worklog-notify.js` (התראה לחיצה) + `worklog-email.js` (אם `--email` ומופעל) + `worklog-calendar.js --sync` (spawn נפרד fail-safe, בריצת `--email` בלבד, אם calendar מופעל).
 
 ### `worklog-notify.js` — התראת toast לחיצה
 - Windows: WinRT toast תחת ה-AppId של PowerShell (ללא מודול/רישום). מקבל `title, message, launchPath`.
@@ -92,10 +93,19 @@
 - קורא/ממזג/כותב `config.json`. CLI: `email on/off`, `email.time`, `email.days` (תומך `Sun-Thu`),
   `weekly.day/time/off`. **כל שינוי קורא ל-`registerTasks` → רישום מחדש** (אין drift הגדרות↔תזמון).
 
-### `worklog-schedule.js` — רישום משימות מ-config (משותף ל-install/config/email)
+### `worklog-schedule.js` — רישום משימות מ-config (משותף ל-install/config/email/calendar)
 - `defaultConfig()`, `parseDays()`, `registerTasks(...)`, `describe()`.
 - רישום = איפוס מלא (Unregister-all → register applicable), כולל ניקוי `WorkJournal-Daily` הישן.
-- בונה: `WorkJournal-Notify` (18:00 א׳–ה׳, קבוע) · `WorkJournal-DailyEmail` + `WorkJournal-Weekly` (אם email.enabled).
+- בונה: `WorkJournal-Notify` (18:00 א׳–ה׳, קבוע) · `WorkJournal-DailyEmail` (אם email **או** calendar מופעלים) · `WorkJournal-Weekly` (אם email.enabled).
+
+### `worklog-blocks.js` — חישוב בלוקים (טהור, 0 AI)
+- `computeBlocks(sessions, entries, {maxGap,minBlock})` → בלוקים מעוגני-סשנים, גזומי-פערים; ללא I/O, נבדק יחידתית (9/9); `dedupeSessions` ל-E5.
+
+### `worklog-calendar.js` — סנכרון Google Calendar (אופציונלי)
+- `--setup` (OAuth2 loopback, `--env`/prompt) · `--test` · `--sync [date]` · `--disable`.
+- Token `{client_id,client_secret,refresh_token}` מוצפן **DPAPI** ב-`.calendar-cred`; access token מתחדש בכל ריצה (REST, ללא npm).
+- `--sync`: סשני-היום + רשומות הלוג → `computeBlocks` → אירועי בלוק (timed) + "סיכום היום" (all-day) → **regenerate-and-replace** לפי תיוג `worklog=<date>`, ביומן הייעודי "Work Journal" בלבד.
+- נקרא מ-`worklog-summary.js` בריצת הסוף-יום (spawn נפרד, fail-safe). מקור המרווחים: `.sessions/<date>.jsonl`.
 
 ---
 

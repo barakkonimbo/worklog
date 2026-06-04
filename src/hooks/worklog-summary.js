@@ -100,6 +100,21 @@ function previewOf(md) {
   return lines.slice(0, 2).join(' • ').slice(0, 160) || 'הסיכום מוכן';
 }
 
+// Calendar sync runs only on the FINAL end-of-day run (--email). Spawned as a separate
+// process so a calendar/network failure can NEVER break the summary, email, or notification.
+// worklog-calendar.js self-gates (exits quietly if calendar is disabled).
+function trySyncCalendar(dateStr) {
+  try {
+    const script = path.join(__dirname, 'worklog-calendar.js');
+    if (!fs.existsSync(script)) return;
+    const r = spawnSync(process.execPath, [script, '--sync', dateStr], {
+      encoding: 'utf8', windowsHide: true, timeout: 90000, env: { ...process.env },
+    });
+    if (r.stdout && r.stdout.trim()) console.log(r.stdout.trim());
+    if (r.status !== 0 && r.stderr) console.error('[worklog-summary] calendar sync:', r.stderr.slice(0, 300));
+  } catch (e) { console.error('[worklog-summary] calendar sync skipped:', e.message); }
+}
+
 // ---------- daily ----------
 function doDaily() {
   const file = lib.dailyFile(baseDate);
@@ -136,6 +151,8 @@ ${content}
   const emailed = want.email && emailer.emailEnabled() ? emailer.sendSummary('סיכום יום — ' + dateStr, finalContent) : false;
   const title = (want.email ? '📓 סיכום היום (סופי)' : '📓 סיכום היום מוכן') + ' — ' + dateStr + (emailed ? ' · 📧 נשלח למייל' : '');
   notifier.notify(title, previewOf(finalContent), out);
+  // final run only: sync the day's blocks + summary to Google Calendar (fail-safe, self-gated)
+  if (want.email) trySyncCalendar(lib.dateKey(baseDate));
 }
 
 // ---------- weekly ----------

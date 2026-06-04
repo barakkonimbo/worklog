@@ -52,10 +52,11 @@ node work-journal-setup/uninstall.js --purge    # מוחק גם את הלוגי�
 - מוסיפה קבצים תחת `~/.claude/hooks/`, `~/.claude/skills/worklog/`.
 - ממזגת בלוק מסומן ל-`~/.claude/CLAUDE.md` (בין `WORK-JOURNAL:START/END`).
 - ממזגת רשומות `SessionStart`+`SessionEnd` ל-`~/.claude/settings.json` (מגבה ל-`.bak`, לא דורסת hooks קיימים).
-- רושמת ב-Task Scheduler (Windows): `WorkJournal-Notify` (18:00 א׳–ה׳, התראה). אם מופעל מייל — גם
-  `WorkJournal-DailyEmail` (20:30 א׳–ה׳) ו-`WorkJournal-Weekly` (ראשון 08:00).
+- רושמת ב-Task Scheduler (Windows): `WorkJournal-Notify` (18:00 א׳–ה׳, התראה). אם מופעל מייל **או** יומן — גם
+  `WorkJournal-DailyEmail` (20:30 א׳–ה׳); אם מייל — גם `WorkJournal-Weekly` (ראשון 08:00).
 - מייל הוא **opt-in** (כבוי כברירת מחדל); הפעלה דרך `worklog-email.js --setup`, סיסמה מוצפנת DPAPI.
-- יוצרת `~/.claude/work-journal/` לנתונים (כולל `config.json` להגדרות).
+- **Google Calendar** הוא **opt-in** (כבוי כברירת מחדל); הפעלה דרך `worklog-calendar.js --setup` (OAuth, token מוצפן DPAPI). כותב רק ליומן ייעודי "Work Journal".
+- יוצרת `~/.claude/work-journal/` לנתונים (`config.json`, `.sessions/`, סיכומים; ה-creds מוצפנים DPAPI).
 
 ## מגבלות ידועות (להפצה רחבה)
 - **תזמון אוטומטי = Windows בלבד** כרגע. mac/Linux → צריך `launchd`/`cron` (ב-roadmap).

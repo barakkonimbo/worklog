@@ -70,6 +70,28 @@ function analyzeTranscript(tp) {
 }
 
 try {
+  // Capture the real session interval for Calendar blocks (cheap, no AI).
+  // Records {start,end,project,sessionId}; dedup-by-sessionId happens at read time
+  // (worklog-blocks.js). E6: a session that crossed midnight is split at the day boundary.
+  if (marker && marker.startTime && marker.project) {
+    const endDate = lib.dateKey(d);
+    const endTime = lib.timeKey(d);
+    const sessionId = sid || undefined;
+    const writeSession = (dateKey, start, end) => {
+      const f = path.join(lib.SESSIONS, dateKey + '.jsonl');
+      fs.mkdirSync(lib.SESSIONS, { recursive: true });
+      fs.appendFileSync(f, JSON.stringify({ start, end, project: marker.project, sessionId }) + '\n', 'utf8');
+    };
+    if (marker.startDate && marker.startDate !== endDate) {
+      writeSession(marker.startDate, marker.startTime, '23:59'); // tail of the start day
+      writeSession(endDate, '00:00', endTime);                   // head of the end day
+    } else {
+      writeSession(endDate, marker.startTime, endTime);
+    }
+  }
+} catch { /* non-fatal */ }
+
+try {
   if (marker && !loggedThisSession(marker)) {
     const { first, count } = analyzeTranscript(data.transcript_path);
     // Only bother for substantive sessions (>= 2 real prompts) with a captured topic.

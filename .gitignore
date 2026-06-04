@@ -12,3 +12,12 @@ desktop.ini
 .idea/
 *.swp
 *.log
+
+
+*.env
+# Ignore all .env files, but keep .env.example
+!.env.example
+.client_secret.json
+.client_secret*.json
+client_secret.json
+client_secret*.json

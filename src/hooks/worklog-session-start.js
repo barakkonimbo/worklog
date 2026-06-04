@@ -29,21 +29,27 @@ const sid = data.session_id || '';
 const proj = lib.projectFromCwd(cwd);
 
 // --- session marker (safety-net bookkeeping) ---
+// E5: create only if absent, so compact/resume re-firing SessionStart for the same
+// session keeps the ORIGINAL start time (used as the real session-start anchor for
+// Calendar blocks). The marker is removed at SessionEnd.
 if (sid) {
-  try {
-    fs.writeFileSync(
-      path.join(lib.SESSIONS, sanitize(sid) + '.json'),
-      JSON.stringify({
-        session_id: sid,
-        cwd,
-        project: proj,
-        startDate: lib.dateKey(d),
-        startTime: lib.timeKey(d),
-        source: data.source || '',
-      }),
-      'utf8'
-    );
-  } catch { /* non-fatal */ }
+  const markerPath = path.join(lib.SESSIONS, sanitize(sid) + '.json');
+  if (!fs.existsSync(markerPath)) {
+    try {
+      fs.writeFileSync(
+        markerPath,
+        JSON.stringify({
+          session_id: sid,
+          cwd,
+          project: proj,
+          startDate: lib.dateKey(d),
+          startTime: lib.timeKey(d),
+          source: data.source || '',
+        }),
+        'utf8'
+      );
+    } catch { /* non-fatal */ }
+  }
 }
 
 // --- build injected context (cap ~9000 chars; additionalContext limit is 10k) ---

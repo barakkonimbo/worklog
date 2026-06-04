@@ -46,11 +46,22 @@
 
 ברירות מחדל אחרי הפעלה: יומי **20:30 א׳–ה׳**, שבועי **ראשון 08:00**. הסיסמה נשמרת **מוצפנת (DPAPI)**.
 
+## Google Calendar בסוף יום (אופציונלי — כבוי כברירת מחדל)
+מסנכרן בסוף היום בלוקי-זמן לפי פרויקט + אירוע "סיכום יום" ל**יומן ייעודי "Work Journal"** (לא נוגע באירועים אמיתיים). דורש סטאפ OAuth חד-פעמי:
+1. **OAuth client ב-Google Cloud** (פעם אחת): https://console.cloud.google.com → New Project `Work Journal` → הפעל **Google Calendar API** → **OAuth consent screen** = **Internal** (Workspace) → **Credentials → OAuth client ID → Desktop app** → העתק **Client ID** + **Client secret**.
+   - ⚠️ אל תתחיל את ה-$300 trial (לא נדרש). אם רק "External" זמין — refresh token פג אחרי 7 ימים; עדיף Internal.
+2. **הפעלה** (ב-PowerShell/cmd): `node "%USERPROFILE%\.claude\hooks\worklog-calendar.js" --setup`
+   הדבק Client ID + Secret → ייפתח דפדפן לאישור → אשר. (ה-token נשמר **מוצפן DPAPI**.)
+3. **בדיקה:** `node "%USERPROFILE%\.claude\hooks\worklog-calendar.js" --test` → אירוע בדיקה נוצר ונמחק ביומן "Work Journal".
+
+הסנכרון רץ אוטומטית בריצת הסוף-יום (20:30). כיבוי: `worklog-config.js calendar off`.
+
 ## שינוי הגדרות (קל)
 **דרך Claude** — פשוט בקש: "כבה לי את מייל היומן" · "תשלח את המייל ב-21:00" · "שבועי ביום חמישי".
 **או ישירות** (כל שינוי מעדכן אוטומטית את המשימות):
 - הצגה: `node "%USERPROFILE%\.claude\hooks\worklog-config.js"`
 - מייל off/on: `… worklog-config.js email off` · `email on`
+- יומן off/on: `… worklog-config.js calendar off` · `calendar on`
 - שעה/ימים: `… worklog-config.js email.time 21:00` · `email.days Sun-Thu`
 - שבועי: `… worklog-config.js weekly.day Sunday` · `weekly.time 08:00` · `weekly off`
 

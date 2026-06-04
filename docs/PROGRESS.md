@@ -20,21 +20,29 @@
 | מקור קנוני + תיעוד בפרויקט | ✅ הושלם |
 | Installer + הפצה (skill/zip, גרסאות) | ✅ הושלם ונבדק (אידמפוטנטי) |
 | הופץ לגיטהאב (dev repo + קטלוג) | ✅ worklog + youleap-Implementers/Features |
-| Google Calendar | 🔨 אפיון מלא + ליבת בלוקים (worklog-blocks) נבדקה 9/9; הבא: capture + OAuth |
+| Google Calendar (opt-in, OAuth, DPAPI) | ✅ נבנה ואומת חי — setup/test/sync/idempotent (v0.7.0) |
 | תמיכה ב-macOS/Linux (תזמון) | ⏳ לא התחיל |
 
 ---
 
 ## 🎯 הצעד הבא (Next Up)
-1. **חבר צוות → גרסה 0.6.0** — לשלוח zip מעודכן, להריץ שוב `/work-journal-setup`, ואם רוצה מייל → `--setup`.
-2. **Google Calendar** — אירוע/עדכון בסוף יום (ואולי בזמן אמת, פחות קריטי).
-3. **Cross-platform** — תזמון `launchd`/`cron` ל-macOS/Linux (ההתראות כבר תומכות mac/linux).
-4. **שעות בבחירה בהתקנה** — לשאול שעות ב-`--setup` (כרגע ברירת מחדל + שינוי קל אח״כ).
-5. **הכנסה לקטלוג youleap-implementers**.
+1. **חבר צוות → גרסה 0.7.0** — לשלוח zip מעודכן, `/work-journal-setup`, ואופציונלית `--setup` למייל ו/או ליומן.
+2. **Cross-platform** — תזמון `launchd`/`cron` ל-macOS/Linux (ההתראות כבר תומכות mac/linux).
+3. **שעות בבחירה בהתקנה** — לשאול שעות ב-`--setup` (כרגע ברירת מחדל + שינוי קל אח״כ).
+4. **Calendar — שיפורי E1/E3/E4** (עיגון-לרשומה, חפיפת חלונות, flush אחרי קריסה) לפי טבלת ה-Known Limitations.
 
 ---
 
 ## 🗓️ לוג כרונולוגי
+
+### 2026-06-04 — Google Calendar הושלם ואומת (v0.7.0)
+**נעשה:**
+- `worklog-calendar.js` — OAuth2 loopback + Calendar REST, token מוצפן **DPAPI** (`.calendar-cred`), `--setup`/`--test`/`--sync`/`--disable`. **אומת חי:** setup (consent בדפדפן ✓), test (יצירה+מחיקה בזמן ✓), sync (2 בלוקים + אירוע סיכום ✓), **אידמפוטנטיות** (`replaced 3`, בלי כפילויות ✓).
+- בלוקים מ-`worklog-blocks.js` (מעוגני-סשנים); לכידת מרווחי-סשן ב-`worklog-session-end.js` (פיצול-חצות E6) + E5 ב-session-start (create-if-absent); חיווט **fail-safe** ב-`worklog-summary.js` (spawn נפרד בריצת 20:30). משימת 20:30 נרשמת אם email **או** calendar. `calendar on/off` ב-worklog-config.
+- **אבטחה:** ה-`.env` עם ה-secret מאומת ב-`.gitignore` (מעולם לא נדחף). כתיבה רק ליומן ייעודי "Work Journal" + תיוג `worklog=<date>` — לא נוגעים באירועים אמיתיים.
+- פרוס מקומית (11 hooks, v0.7.0). מודל חזק (Opus) לשלב נגיעה-בקוד לפי בקשת המשתמש.
+
+**פתוח:** אישור ויזואלי של הבלוקים אצל המשתמש; ship לקטלוג (Features/work-journal-setup → 0.7.0); cross-platform.
 
 ### 2026-06-04 — Calendar: אפיון + ליבת בלוקים (לקראת v0.7)
 **נעשה:**

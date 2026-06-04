@@ -1,7 +1,14 @@
 # אפיון — אינטגרציית Google Calendar (Work Journal)
 
-> סטטוס: **אפיון לאישור** (טרם נבנה). יעד: גרסה 0.7.0.
+> סטטוס: **נבנה ואומת חי** (v0.7.0, 2026-06-04) — `--setup` / `--test` / `--sync` / אידמפוטנטיות ✅.
 > מטרה: להוסיף אוטומטית ליומן Google תיעוד חזותי של מה עבדנו עליו — **בלי לגעת באירועים אמיתיים**.
+
+## מימוש (v0.7.0)
+- `src/hooks/worklog-calendar.js` — OAuth2 loopback (`--setup --env <path>` / prompt), Calendar REST, `--test`, `--sync [date]`. Token (`{client_id,client_secret,refresh_token}`) נשמר **מוצפן DPAPI** ב-`.calendar-cred`; access token מתחדש בכל ריצה.
+- `src/hooks/worklog-blocks.js` — חישוב הבלוקים (טהור, נבדק 9/9).
+- **טריגר:** `worklog-summary.js` מריץ `worklog-calendar.js --sync` בריצת הסוף-יום (`--email`, 20:30) — כ-**spawn נפרד ובטוח-כשל** (כשל ביומן לא שובר סיכום/מייל/התראה). משימת ה-20:30 נרשמת אם `email.enabled` **או** `calendar.enabled`.
+- **לכידת סשנים:** `worklog-session-end.js` כותב `{start,end,project,sessionId}` ל-`.sessions/<date>.jsonl` (פיצול-חצות); `worklog-session-start.js` יוצר marker רק-אם-חסר (E5).
+- **בטיחות:** כותב רק ליומן "Work Journal" הייעודי, ומוחק/יוצר רק אירועים מתויגים `worklog=<date>`.
 
 ---
 
@@ -52,11 +59,13 @@
 - scope: `https://www.googleapis.com/auth/calendar`.
 
 ### מדריך סטאפ ידני — יצירת OAuth client (פעם אחת, לכל משתמש)
-1. https://console.cloud.google.com → צור/בחר פרויקט.
-2. **APIs & Services → Library → "Google Calendar API" → Enable.**
-3. **OAuth consent screen:** אם konimbo = Workspace בחר **Internal** (אין אימות-אפליקציה, refresh token לא פג); שם האפליקציה `Work Journal`. (אם External — הוסף את המייל שלך כ-Test user.)
-4. **Credentials → Create credentials → OAuth client ID → Application type = `Desktop app`** → שם `Work Journal` → Create.
-5. העתק **Client ID** + **Client secret** → יודבקו ב-`worklog-calendar.js --setup` (יישמרו מוצפנים DPAPI).
+0. **אל תתחיל את ה-$300 trial** ("Try for free"/"Start free") — לא נדרש, לא צריך כרטיס אשראי.
+1. https://console.cloud.google.com → **Select a project → New Project** (שם `Work Journal`) → Create.
+2. חיפוש `Google Calendar API` → **Enable** (חינם, ללא billing).
+3. **OAuth consent screen / Google Auth Platform:** בחר **Internal** אם זמין (Workspace) — **אין אימות, refresh token לא פג**. שם `Work Journal`, support+developer email = שלך.
+   ⚠️ **אם רק External זמין** (חשבון אישי) — האפליקציה במצב "testing" וה-**refresh token פג אחרי 7 ימים** → לא מתאים לאוטומציה יומית. במקרה כזה: לעצור ולתכנן (publish/verification או חלופה).
+4. **Credentials → Create credentials → OAuth client ID → Application type = `Desktop app`** → `Work Journal` → Create.
+5. העתק **Client ID** + **Client secret** (אל תשתף — יודבקו מקומית ב-`worklog-calendar.js --setup`, יישמרו מוצפנים DPAPI).
 ה-`--setup` ירים שרת מקומי זמני (`http://localhost`) שיתפוס את ה-consent (סטנדרטי ל-Desktop client).
 
 ## רכיבים לבנייה

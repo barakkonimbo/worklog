@@ -39,12 +39,14 @@
 | `worklog-lib.js` | עזרים: נתיבים, תאריכים (שבוע ISO, יום עברי), `appendEntry`, `projectFromCwd` |
 | `worklog-log.js` | CLI להוספת רשומה (`--project`, `--msg`) |
 | `worklog-session-start.js` | SessionStart: מזריק יומן היום+אתמול + הוראת תיעוד; כותב marker. recursion-guard. |
-| `worklog-session-end.js` | SessionEnd: רשת ביטחון — fallback מהבקשה הראשונה אם לא תועד |
-| `worklog-summary.js` | מחולל סיכום יומי/שבועי דרך `claude -p`; node כותב; מתריע; שולח מייל (אם `--email`) |
+| `worklog-session-end.js` | SessionEnd: רשת ביטחון (fallback) + **לכידת מרווח הסשן** ל-`.sessions/<date>.jsonl` (E6 פיצול-חצות) |
+| `worklog-summary.js` | מחולל סיכום יומי/שבועי דרך `claude -p`; node כותב; מתריע; שולח מייל + מסנכרן יומן (בריצת `--email`) |
 | `worklog-notify.js` | התראת Windows toast **לחיצה** (WinRT, protocol activation, ללא מודול) — פותחת סיכום/תיקייה |
 | `worklog-email.js` | מייל אופציונלי (Gmail/SMTP); `--setup`/`--test`; סיסמה מוצפנת DPAPI |
-| `worklog-config.js` | מנוע הגדרות קל (on/off, שעות, ימים) — כל שינוי רושם מחדש משימות |
-| `worklog-schedule.js` | רישום המשימות מתוך config (משותף ל-install/config/email) |
+| `worklog-blocks.js` | חישוב בלוקי-זמן (טהור, 0 AI) מסשנים+רשומות — מעוגן-סשנים, גזום-פערים (נבדק 9/9) |
+| `worklog-calendar.js` | סנכרון Google Calendar אופציונלי (OAuth2 loopback, REST); `--setup`/`--test`/`--sync`; token מוצפן DPAPI |
+| `worklog-config.js` | מנוע הגדרות קל (email/calendar on/off, שעות, ימים) — כל שינוי רושם מחדש משימות |
+| `worklog-schedule.js` | רישום המשימות מתוך config (משותף; 20:30 נרשם אם email **או** calendar) |
 
 **שילוב במערכת:** בלוק ב-`CLAUDE.md` · רשומות `SessionStart`+`SessionEnd` ב-`settings.json` (אדיטיבי,
 מגובה) · skill `/worklog` · משימות Task Scheduler מתוך config.
@@ -53,7 +55,7 @@
 (skill `work-journal-setup`) · `build.js` → `dist/work-journal-setup(.zip)`.
 
 **פלט (`~/.claude/work-journal/`):** `YYYY-MM-DD.md` (לוג) · `summary-*.md` (יומי) · `YYYY-Www-weekly.md`
-(שבועי) · `config.json` (הגדרות) · `.email-cred` (סיסמה מוצפנת) · `.installed-version` · `.sessions/`.
+(שבועי) · `config.json` (הגדרות) · `.email-cred`/`.calendar-cred` (מוצפן DPAPI) · `.sessions/<date>.jsonl` (מרווחי סשן) · `.installed-version`.
 
 ---
 
@@ -61,9 +63,9 @@
 
 1. **פתיחת סשן** → `SessionStart` מזריק יומן + הוראה; כותב marker.
 2. **במהלך היום** → קלוד מריץ `worklog-log.js` בנקודות מפתח. **התיעוד לא נעצר ב-18:00.**
-3. **סגירת סשן** → `SessionEnd` כותב fallback אם לא תועד; מנקה marker.
+3. **סגירת סשן** → `SessionEnd` כותב fallback אם לא תועד; **לוכד את מרווח הסשן** (לבלוקי היומן); מנקה marker.
 4. **18:00 א׳–ה׳** → `--daily`: סיכום ביניים + **התראת toast לחיצה** (ללא מייל).
-5. **20:30 א׳–ה׳** → `--daily --email`: סיכום **סופי** (כולל עבודה אחרי 18:00) + מייל (אם מופעל).
+5. **20:30 א׳–ה׳** → `--daily --email`: סיכום **סופי** + מייל (אם מופעל) + **סנכרון Google Calendar** — בלוקים + סיכום (אם מופעל).
 6. **ראשון 08:00** → `--weekly --email`: סיכום **השבוע שעבר** + פתוחים + מייל.
 
 ---
@@ -84,13 +86,16 @@
 | Installer אידמפוטנטי (הרצה כפולה = אפס שכפול), GSD נשמר, גרסה | ✅ |
 | ה-zip המצורף — installer מוצא `./src`, מבנה תקין | ✅ |
 | חבר צוות (Windows) — התקנה תוך שניות, עובד | ✅ |
+| בלוקי-זמן (`worklog-blocks`) — 9/9 בדיקות יחידה | ✅ |
+| Google Calendar — `--setup` (OAuth consent), `--test` (יצירה+מחיקה בזמן) | ✅ |
+| Calendar `--sync` — בלוקים + אירוע סיכום ביומן הייעודי; אידמפוטנטי (re-sync מחליף, אפס כפילויות) | ✅ |
 
 ---
 
-## 6. סטטוס נוכחי (0.6.0)
+## 6. סטטוס נוכחי (0.7.0)
 
 - ✅ **פעיל ומאומת** אצל המשתמש + אצל חבר צוות אחד. ניתן להפצה (zip).
-- ✅ מייל, התראות-לחיצה, הגדרות-קלות, פיצול תזמון — הכול עובד.
-- ⏳ **טרם:** Google Calendar; תזמון cross-platform (mac/Linux); בחירת שעות בזמן ההתקנה.
+- ✅ מייל, התראות-לחיצה, הגדרות-קלות, פיצול תזמון, **ו-Google Calendar** (opt-in, OAuth, DPAPI) — הכול עובד.
+- ⏳ **טרם:** תזמון cross-platform (mac/Linux); בחירת שעות בזמן ההתקנה; שיפורי E1/E3/E4 ביומן (Known Limitations).
 
 המשך וסדר עדיפויות → [PROGRESS.md](./PROGRESS.md).

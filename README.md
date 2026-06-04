@@ -1,10 +1,10 @@
 # Work Journal — יומן עבודה אוטומטי ל-Claude Code
 
 מערכת שנטענת אוטומטית **בכל סשן Claude Code, בכל פרויקט**, מתעדת לאורך היום מה עבדת עליו (לפי
-פרויקט), ומפיקה **סיכום AI** — יומי ושבועי. עם **התראה לחיצה** בסוף היום ו**מייל אופציונלי**.
+פרויקט), ומפיקה **סיכום AI** — יומי ושבועי. עם **התראה לחיצה**, **מייל אופציונלי**, ו**סנכרון Google Calendar** (אופציונלי).
 הכול נשמר **מקומית** אצלך, באף שרת.
 
-`גרסה 0.6.0` · `Windows (mac/Linux חלקי)` · `ללא תלות חיצונית (Node + Claude CLI)`
+`גרסה 0.7.0` · `Windows (mac/Linux חלקי)` · `ללא תלות חיצונית (Node + Claude CLI)`
 
 ---
 
@@ -16,6 +16,7 @@
 - **18:00 (א׳–ה׳)** — התראת ביניים עם סיכום היום. **לחיצה פותחת את הסיכום** (או את התיקייה). קבוע לכולם.
 - **מייל סופי (opt-in)** — מי שמפעיל מקבל ב-**20:30 (א׳–ה׳)** מייל עם סיכום *סופי* של היום (כולל עבודה אחרי 18:00).
 - **שבועי** — **ראשון 08:00** מייל עם סיכום **השבוע שעבר** + מה שנשאר פתוח.
+- **Google Calendar (opt-in)** — בסוף היום: בלוקי-זמן לפי פרויקט (מעוגני-סשנים) + אירוע "סיכום יום", ביומן ייעודי **"Work Journal"** — בלי לגעת באירועים אמיתיים.
 - **סיכום חכם, לא חותמות** — ה-AI שוזר את הרשומות לנרטיב לפי פרויקט + ציר זמן + בולטים.
 - **ניתן להפצה** — installer אידמפוטנטי שחבר צוות מריץ ומקבל את המוצר המלא.
 
@@ -46,10 +47,16 @@
 node "%USERPROFILE%\.claude\hooks\worklog-email.js" --setup   # פעם אחת (App Password, מוצפן DPAPI)
 node "%USERPROFILE%\.claude\hooks\worklog-email.js" --test    # בדיקה
 ```
+**Google Calendar (אופציונלי, כבוי כברירת מחדל):**
+```
+node "%USERPROFILE%\.claude\hooks\worklog-calendar.js" --setup   # פעם אחת (OAuth, token מוצפן DPAPI)
+node "%USERPROFILE%\.claude\hooks\worklog-calendar.js" --test    # בדיקה
+```
 **שינוי הגדרות (מעדכן אוטומטית את המשימות):**
 ```
 node "%USERPROFILE%\.claude\hooks\worklog-config.js"                 # הצגה
 node "%USERPROFILE%\.claude\hooks\worklog-config.js" email off|on
+node "%USERPROFILE%\.claude\hooks\worklog-config.js" calendar off|on
 node "%USERPROFILE%\.claude\hooks\worklog-config.js" email.time 21:00
 node "%USERPROFILE%\.claude\hooks\worklog-config.js" email.days Sun-Thu
 node "%USERPROFILE%\.claude\hooks\worklog-config.js" weekly.day Sunday weekly.time 08:00
@@ -62,7 +69,7 @@ node "%USERPROFILE%\.claude\hooks\worklog-config.js" weekly.day Sunday weekly.ti
 | משימה | מתי | פעולה |
 |------|-----|-------|
 | `WorkJournal-Notify` | 18:00, א׳–ה׳ | התראת ביניים (ללא מייל) — **קבוע לכולם** |
-| `WorkJournal-DailyEmail` | 20:30, א׳–ה׳ | מייל סיכום סופי — רק אם מייל מופעל |
+| `WorkJournal-DailyEmail` | 20:30, א׳–ה׳ | סיכום סופי → מייל (אם מופעל) + **סנכרון יומן** (אם מופעל). נרשם אם מייל **או** יומן פעילים |
 | `WorkJournal-Weekly` | ראשון 08:00 | מייל סיכום השבוע שעבר — רק אם מייל מופעל |
 
 מודל שני-שלבי: קודם בוחרים אם מייל פעיל בכלל (ברירת מחדל כבוי); אם כן — ברירת מחדל **או** שעות/ימים אישיים.
@@ -89,7 +96,7 @@ work-journal/
 │   ├── install.js         ← installer נייד ואידמפוטנטי
 │   └── uninstall.js       ← הסרה (+--purge)
 ├── src/                   ← מקור קנוני (נפרס ל-~/.claude/)
-│   ├── hooks/             ← lib · log · session-start · session-end · summary · notify · email · config · schedule
+│   ├── hooks/             ← lib · log · session-start · session-end · summary · notify · email · config · schedule · blocks · calendar
 │   ├── skill/SKILL.tpl.md ← skill /worklog (תבנית; install מחליף נתיבים)
 │   └── templates/         ← בלוק CLAUDE.md + רשומות hooks ל-settings.json
 └── dist/                  ← תוצר build: work-journal-setup/ + .zip (להפצה)
@@ -104,6 +111,7 @@ work-journal/
   ואם קלוד לא זמין יש fallback מקבץ-לפי-פרויקט.
 - **תזמון** דרך Windows Task Scheduler, מבוסס `config.json` (worklog-schedule.js).
 - **מייל** דרך SMTP (PowerShell), סיסמה מוצפנת DPAPI. **התראות** דרך WinRT toast, ללא מודול.
+- **Google Calendar** דרך OAuth2 + REST (token מוצפן DPAPI); בלוקים דטרמיניסטיים מסשנים+רשומות; כותב רק ליומן ייעודי, regenerate-and-replace לפי תיוג.
 
 פירוט מלא → [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md). הנמקות → [docs/DECISIONS.md](./docs/DECISIONS.md).
 
@@ -120,8 +128,8 @@ work-journal/
 
 ## Roadmap
 
-- **Google Calendar** בסוף יום (ואולי בזמן אמת).
-- **תזמון cross-platform** — `launchd` (macOS) / `cron` (Linux). *(התראות כבר תומכות mac/Linux.)*
+- **תזמון cross-platform** — `launchd` (macOS) / `cron` (Linux). *(התראות + יומן כבר חוצי-פלטפורמה ברובם.)*
 - בחירת שעות בזמן ההתקנה עצמה.
+- שיפורי דיוק ליומן (E1/E3/E4 ב-Known Limitations).
 
 מצב מלא והתקדמות → [docs/PROGRESS.md](./docs/PROGRESS.md).
