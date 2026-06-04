@@ -99,7 +99,7 @@ work-journal/
 │   ├── install.js         ← installer נייד ואידמפוטנטי
 │   └── uninstall.js       ← הסרה (+--purge)
 ├── src/                   ← מקור קנוני (נפרס ל-~/.claude/)
-│   ├── hooks/             ← lib · log · session-start · session-end · summary · notify · email · config · schedule · blocks · calendar
+│   ├── hooks/             ← lib · log · session-start · session-end · summary · notify · email · config · schedule · blocks · calendar · format
 │   ├── skill/SKILL.tpl.md ← skill /worklog (תבנית; install מחליף נתיבים)
 │   └── templates/         ← בלוק CLAUDE.md + רשומות hooks ל-settings.json
 └── dist/                  ← תוצר build: work-journal-setup/ + .zip (להפצה)
