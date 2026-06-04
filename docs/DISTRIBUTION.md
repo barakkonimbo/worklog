@@ -62,5 +62,9 @@ node work-journal-setup/uninstall.js --purge    # מוחק גם את הלוגי�
 - **`claude` CLI** צריך להיות זמין למכונה (PATH) לסיכומי AI; אחרת נופלים ל-fallback מקבץ-לפי-פרויקט.
 - **Auth** — הסיכום המתוזמן משתמש ב-login השמור; מכונה ללא login אינטראקטיבי תצטרך `ANTHROPIC_API_KEY`.
 
-## שילוב בקטלוג youleap-implementers
-המוצר מתאים להיכנס לקטלוג ה-artifacts כפריט נוסף לצד `git-dev-push` — כ-`work-journal-setup` (skill+zip).
+## ריפוזיטוריז (איפה זה חי)
+- **פיתוח:** `github.com/barakkonimbo/worklog` — כל הפרויקט הזה. כאן עושים שדרוגים / commits / שחזור. `dist/`+`*.zip` ב-gitignore (מתחדש ב-`node build.js`).
+- **קטלוג (הפצה):** `github.com/barakkonimbo/youleap-Implementers` בנתיב `Features/work-journal-setup/` — תיקיית ההתקנה (בלי zip), מוכנה להרצה ע"י כל חבר צוות.
+
+**re-ship אחרי שינוי:** `node build.js` → להעתיק `dist/work-journal-setup/` אל
+`youleap-Implementers/Features/work-journal-setup/` → לעדכן "Current contents" ב-README הקטלוג → commit+push לשני הריפו.

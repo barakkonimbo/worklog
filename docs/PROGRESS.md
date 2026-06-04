@@ -19,7 +19,8 @@
 | הגדרות ניתנות-לשינוי (/worklog + config) | ✅ הושלם ונבדק (round-trip) |
 | מקור קנוני + תיעוד בפרויקט | ✅ הושלם |
 | Installer + הפצה (skill/zip, גרסאות) | ✅ הושלם ונבדק (אידמפוטנטי) |
-| Google Calendar | ⏳ לא התחיל |
+| הופץ לגיטהאב (dev repo + קטלוג) | ✅ worklog + youleap-Implementers/Features |
+| Google Calendar | ⏳ באפיון |
 | תמיכה ב-macOS/Linux (תזמון) | ⏳ לא התחיל |
 
 ---
@@ -34,6 +35,14 @@
 ---
 
 ## 🗓️ לוג כרונולוגי
+
+### 2026-06-04 — הופץ לגיטהאב (2 ריפו)
+**נעשה:**
+- **ריפו פיתוח:** github.com/barakkonimbo/worklog — כל הפרויקט. `dist/`+`*.zip` ב-gitignore (מתחדש ב-`node build.js`). שדרוגים עתידיים כאן.
+- **קטלוג:** github.com/barakkonimbo/youleap-Implementers — קטגוריה חדשה `Features/` + `Features/work-journal-setup/` (תיקיית ההתקנה, בלי zip) + `Features/README.md` + עדכון README הקטלוג.
+- **זרימת re-ship:** מפתחים ב-worklog → `node build.js` → מעתיקים `dist/work-journal-setup/` ל-`Implementers/Features/` → commit+push לשניהם.
+
+**פתוח:** Google Calendar (באפיון).
 
 ### 2026-06-04 — מייל + הגדרות + פיצול תזמון (v0.6)
 **נעשה:**

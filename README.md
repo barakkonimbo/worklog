@@ -114,6 +114,8 @@ work-journal/
 `node build.js` → `dist/work-journal-setup/` + `dist/work-journal-setup.zip`. חבר צוות פורס ל-skills
 ומריץ `/work-journal-setup` (אידמפוטנטי, מציג `updating from X` בעדכון). פרטים → [docs/DISTRIBUTION.md](./docs/DISTRIBUTION.md).
 
+**ריפו פיתוח:** `barakkonimbo/worklog` · **מופץ בקטלוג:** `youleap-Implementers/Features/work-journal-setup/`.
+
 ---
 
 ## Roadmap
