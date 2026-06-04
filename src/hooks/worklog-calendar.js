@@ -25,6 +25,7 @@ const readline = require('readline');
 const { spawnSync, execSync } = require('child_process');
 const lib = require('./worklog-lib.js');
 const { computeBlocks } = require('./worklog-blocks.js');
+const fmt = require('./worklog-format.js');
 
 const ROOT = process.env.CLAUDE_CONFIG_DIR
   ? path.join(process.env.CLAUDE_CONFIG_DIR, 'work-journal')
@@ -220,7 +221,7 @@ async function syncDay(dateStr) {
     const sum = lib.readIf(lib.summaryFile(dObj)).trim();
     if (sum) events.push({
       summary: '📓 סיכום היום',
-      description: sum.slice(0, 8000),
+      description: fmt.toCalHtml(sum).slice(0, 8000),
       start: { date: dateStr }, end: { date: nextDateStr(dateStr) },
       extendedProperties: { private: { worklog: dateStr } },
     });

@@ -20,6 +20,7 @@ const path = require('path');
 const os = require('os');
 const readline = require('readline');
 const { spawnSync } = require('child_process');
+const fmt = require('./worklog-format.js');
 
 const ROOT = process.env.CLAUDE_CONFIG_DIR
   ? path.join(process.env.CLAUDE_CONFIG_DIR, 'work-journal')
@@ -46,7 +47,7 @@ function sendSummary(subject, body) {
       "$enc=Get-Content -Raw $env:WL_CRED",
       "$sec=ConvertTo-SecureString $enc",
       "$cred=New-Object System.Management.Automation.PSCredential($env:WL_FROM,$sec)",
-      "Send-MailMessage -From $env:WL_FROM -To ($env:WL_TO -split ',') -Subject $env:WL_SUBJ -Body $env:WL_BODY -SmtpServer $env:WL_HOST -Port ([int]$env:WL_PORT) -UseSsl -Credential $cred -Encoding UTF8",
+      "Send-MailMessage -From $env:WL_FROM -To ($env:WL_TO -split ',') -Subject $env:WL_SUBJ -Body $env:WL_BODY -BodyAsHtml -SmtpServer $env:WL_HOST -Port ([int]$env:WL_PORT) -UseSsl -Credential $cred -Encoding UTF8",
       "Write-Output 'sent'",
     ].join('; ');
     const r = spawnSync('powershell', ['-NoProfile', '-NonInteractive', '-Command', ps], {
@@ -57,7 +58,7 @@ function sendSummary(subject, body) {
         WL_FROM: e.from || e.to,
         WL_TO: e.to,
         WL_SUBJ: subject || 'Work Journal',
-        WL_BODY: body || '',
+        WL_BODY: fmt.toHtml(body || ''),
         WL_HOST: e.smtpHost || 'smtp.gmail.com',
         WL_PORT: String(e.smtpPort || 587),
       },

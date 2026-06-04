@@ -1,6 +1,6 @@
 # סיכום מלא — מה בנינו (Work Journal)
 
-> מסמך זה מסכם **בדיוק** מה נעשה בפיתוח מערכת ה-work-journal, נכון לגרסה **0.7.3** (2026-06-04).
+> מסמך זה מסכם **בדיוק** מה נעשה בפיתוח מערכת ה-work-journal, נכון לגרסה **0.7.4** (2026-06-05).
 > טכני עמוק → [ARCHITECTURE.md](./ARCHITECTURE.md) · הנמקות → [DECISIONS.md](./DECISIONS.md) · התקדמות → [PROGRESS.md](./PROGRESS.md).
 
 ---
@@ -42,9 +42,10 @@
 | `worklog-session-end.js` | SessionEnd: רשת ביטחון (fallback) + **לכידת מרווח הסשן** ל-`.sessions/<date>.jsonl` (E6 פיצול-חצות) |
 | `worklog-summary.js` | מחולל סיכום יומי/שבועי דרך `claude -p`; node כותב; מתריע; **דליברי on-demand** (`--deliver`/`--only`); **שפת פלט** (`config.language`) |
 | `worklog-notify.js` | התראת Windows toast **לחיצה** (WinRT, protocol activation, ללא מודול) — פותחת סיכום/תיקייה |
-| `worklog-email.js` | מייל אופציונלי (Gmail/SMTP); `--setup`/`--test`; סיסמה מוצפנת DPAPI |
-| `worklog-blocks.js` | חישוב בלוקי-זמן (טהור, 0 AI) מסשנים+רשומות — מעוגן-סשנים, גזום-פערים (נבדק 9/9) |
-| `worklog-calendar.js` | סנכרון Google Calendar אופציונלי (OAuth2 loopback, REST); `--setup`/`--test`/`--sync`; token מוצפן DPAPI |
+| `worklog-email.js` | מייל אופציונלי (Gmail/SMTP); `--setup`/`--test`; **גוף HTML** (`toHtml`); סיסמה מוצפנת DPAPI |
+| `worklog-format.js` | **המרת פורמט פר-יעד** (v0.7.4): `toHtml` (מייל) · `toCalHtml` (יומן) · `toPlain` — מבנה בלבד |
+| `worklog-blocks.js` | חישוב בלוקי-זמן (טהור, 0 AI) — מעוגן-סשנים, גזום-פערים, + **fallback מבוסס-רשומות** (v0.7.4: לא מאבד עבודה כש-session חסר) |
+| `worklog-calendar.js` | סנכרון Google Calendar אופציונלי (OAuth2 loopback, REST); `--setup`/`--test`/`--sync`; תיאור-סיכום ב-**HTML** (`toCalHtml`); token מוצפן DPAPI |
 | `worklog-config.js` | מנוע הגדרות קל (email/calendar on/off, שעות, ימים, **שפה**) + **`status`** מאוחד + **`help`** (כל הפקודות) — כל שינוי רושם מחדש משימות |
 | `worklog-schedule.js` | רישום המשימות מתוך config (משותף; 20:30 נרשם אם email **או** calendar) |
 
@@ -94,11 +95,12 @@
 
 ---
 
-## 6. סטטוס נוכחי (0.7.3)
+## 6. סטטוס נוכחי (0.7.4)
 
 - ✅ **פעיל ומאומת** אצל המשתמש + אצל חבר צוות אחד. ניתן להפצה (zip).
 - ✅ מייל, התראות-לחיצה, הגדרות-קלות, פיצול תזמון, **Google Calendar** (opt-in; **mirror מתמשך** — sync בכל סגירת סשן, מתעדכן גם אחרי 20:30), **וממשק on-demand** (`send`/`status`/`help`/בחירת שפה) — הכול עובד.
 - **עיקרון מסירה:** מייל = push חד-פעמי (20:30 + `send` ידני) · יומן = mirror מתמשך · שבועי = catch-all שקורא את הגלם המלא. הנתונים לא אובדים גם אם מייל-ערב פספס עבודה מאוחרת.
+- ✅ **v0.7.4:** בלוקי-יומן עם **fallback מבוסס-רשומות** (כל עבודה מתועדת מופיעה ביומן — לא רק מה שנלכד ב-session) + **פורמט מותאם-יעד** (מייל HTML, תיאור יומן HTML-מוגבל — לא Markdown גולמי).
 - ⏳ **טרם:** תזמון cross-platform (mac/Linux); בחירת שעות בזמן ההתקנה; שיפורי E1/E3/E4 ביומן (Known Limitations).
 
 המשך וסדר עדיפויות → [PROGRESS.md](./PROGRESS.md).

@@ -88,7 +88,7 @@
 ### `worklog-email.js` — מייל אופציונלי (Gmail/SMTP)
 - `--setup` (אינטראקטיבי): כתובת/host/port + App Password (קלט מוסתר), מצפין **DPAPI**
   (`ConvertFrom-SecureString`) ל-`.email-cred`, כותב `config.json`, ורושם מחדש משימות.
-- `sendSummary()`: `Send-MailMessage -UseSsl` עם סיסמה מפוענחת DPAPI. `emailEnabled()` בודק enabled+cred.
+- `sendSummary()`: ממיר את ה-Markdown ל-**HTML** (`worklog-format.toHtml`) ושולח `Send-MailMessage -BodyAsHtml -UseSsl` עם סיסמה מפוענחת DPAPI. `emailEnabled()` בודק enabled+cred.
 - `--test` שולח מייל בדיקה. כבוי כברירת מחדל.
 
 ### `worklog-config.js` — מנוע הגדרות
@@ -103,12 +103,18 @@
 - בונה: `WorkJournal-Notify` (18:00 א׳–ה׳, קבוע) · `WorkJournal-DailyEmail` (אם email **או** calendar מופעלים) · `WorkJournal-Weekly` (אם email.enabled).
 
 ### `worklog-blocks.js` — חישוב בלוקים (טהור, 0 AI)
-- `computeBlocks(sessions, entries, {maxGap,minBlock})` → בלוקים מעוגני-סשנים, גזומי-פערים; ללא I/O, נבדק יחידתית (9/9); `dedupeSessions` ל-E5.
+- `computeBlocks(sessions, entries, {maxGap,minBlock})` → בלוקים מעוגני-סשנים, גזומי-פערים; ללא I/O; `dedupeSessions` ל-E5; `streaksOf` משותף.
+- **Fallback מבוסס-רשומות (v0.7.4):** רשומות שלא נופלות בתוך אף session עדיין הופכות לבלוקים (streaks לפי פרויקט+פער) — כך עבודה לא אובדת כש-session capture חלקי/חסר. (תוקן באג שזרק 92% מהעבודה כשנלכד רק סשן אחד.)
+
+### `worklog-format.js` — המרת פורמט פר-יעד (v0.7.4, טהור)
+- `toHtml(md)` → HTML למייל (`-BodyAsHtml`): `#`→`<h2..h4>`, `- `→`<ul><li>`, `**`→`<b>`, עטיפת RTL.
+- `toCalHtml(md)` → ה-subset שגוגל קלנדר מרנדר (`<b>`/`<ul>`/`<li>`/`<br>`; ללא `<h>`/`<div>`/style) — לתיאור אירוע "סיכום היום".
+- `toPlain(md)` → טקסט נקי (fallback/toast). **מבנה בלבד, לא תוכן.**
 
 ### `worklog-calendar.js` — סנכרון Google Calendar (אופציונלי)
 - `--setup` (OAuth2 loopback, `--env`/prompt) · `--test` · `--sync [date]` · `--disable`.
 - Token `{client_id,client_secret,refresh_token}` מוצפן **DPAPI** ב-`.calendar-cred`; access token מתחדש בכל ריצה (REST, ללא npm).
-- `--sync`: סשני-היום + רשומות הלוג → `computeBlocks` → אירועי בלוק (timed) + "סיכום היום" (all-day) → **regenerate-and-replace** לפי תיוג `worklog=<date>`, ביומן הייעודי "Work Journal" בלבד.
+- `--sync`: סשני-היום + רשומות הלוג → `computeBlocks` → אירועי בלוק (timed) + "סיכום היום" (all-day, תיאור = **`toCalHtml`** של הסיכום) → **regenerate-and-replace** לפי תיוג `worklog=<date>`, ביומן הייעודי "Work Journal" בלבד.
 - נקרא כ-`--sync` משני מקומות (spawn fail-safe): **`worklog-session-end.js`** בכל סגירת סשן (mirror מתמשך — בלוקים) ו-**`worklog-summary.js`** בריצת ה-20:30 (בלוקים + חידוש אירוע הסיכום). מקור המרווחים: `.sessions/<date>.jsonl`.
 
 ---

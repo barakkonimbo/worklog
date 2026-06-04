@@ -37,6 +37,23 @@ function dedupeSessions(sessions) {
   return [...byId.values(), ...anon];
 }
 
+// Split a (time-sorted) entry list into streaks: consecutive same-project entries within maxGap.
+// Shared by the session-anchored path and the fallback path.
+function streaksOf(ents, maxGap) {
+  const streaks = [];
+  let cur = null;
+  for (const e of ents) {
+    if (cur && e.project === cur.project && e.m - cur.lastM <= maxGap) {
+      cur.lastM = e.m;
+      cur.notes.push(e.msg);
+    } else {
+      cur = { project: e.project, firstM: e.m, lastM: e.m, notes: [e.msg] };
+      streaks.push(cur);
+    }
+  }
+  return streaks;
+}
+
 // sessions: [{start:"HH:MM", end:"HH:MM", project, sessionId?}]  (one day)
 // entries:  [{time:"HH:MM", project, msg}]                       (one day)
 // returns:  [{start, end, project, notes:[...]}] sorted by start
@@ -49,28 +66,20 @@ function computeBlocks(sessions, entries, opts = {}) {
     .map((e) => ({ project: e.project || 'misc', msg: e.msg || '', m: toMin(e.time) }))
     .sort((a, b) => a.m - b.m);
 
+  const covered = new Array(ents.length).fill(false);
   const raw = [];
+
+  // 1) Session-anchored blocks: entries inside a captured session interval, anchored to real edges.
   for (const s of dedupeSessions(sessions)) {
     const sStart = toMin(s.start);
     let sEnd = toMin(s.end);
     if (sEnd < sStart) sEnd = sStart; // same-day guard (midnight split happens at capture time, E6)
 
-    const inside = ents.filter((e) => e.m >= sStart && e.m <= sEnd);
-    if (inside.length === 0) continue; // E7: no logged work -> no block (under-claim, don't invent)
+    const inside = [];
+    ents.forEach((e, i) => { if (e.m >= sStart && e.m <= sEnd) { inside.push(e); covered[i] = true; } });
+    if (inside.length === 0) continue; // session with no logged work -> no block (don't invent)
 
-    // split into streaks: consecutive same-project entries within maxGap
-    const streaks = [];
-    let cur = null;
-    for (const e of inside) {
-      if (cur && e.project === cur.project && e.m - cur.lastM <= maxGap) {
-        cur.lastM = e.m;
-        cur.notes.push(e.msg);
-      } else {
-        cur = { project: e.project, firstM: e.m, lastM: e.m, notes: [e.msg] };
-        streaks.push(cur);
-      }
-    }
-
+    const streaks = streaksOf(inside, maxGap);
     streaks.forEach((st, i) => {
       let startM = st.firstM;
       let endM = st.lastM;
@@ -80,6 +89,17 @@ function computeBlocks(sessions, entries, opts = {}) {
       if (endM - startM < minBlock) startM = Math.max(sStart, endM - minBlock);
       raw.push({ start: startM, end: endM, project: st.project, notes: st.notes.slice() });
     });
+  }
+
+  // 2) Fallback blocks: logged entries NOT covered by any captured session STILL become blocks, so work
+  // is never lost when session capture is missing/partial (the calendar must reflect all logged work).
+  // No session edge to anchor to -> span the streak's own first..last entry; pad a lone entry to minBlock.
+  const uncovered = ents.filter((_, i) => !covered[i]);
+  for (const st of streaksOf(uncovered, maxGap)) {
+    let startM = st.firstM;
+    const endM = st.lastM;
+    if (endM - startM < minBlock) startM = Math.max(0, endM - minBlock);
+    raw.push({ start: startM, end: endM, project: st.project, notes: st.notes.slice() });
   }
 
   // merge same-project blocks that overlap or touch (handles back-to-back / concurrent same-project).
