@@ -18,12 +18,24 @@ const { spawnSync } = require('child_process');
 const lib = require('./worklog-lib.js');
 const notifier = require('./worklog-notify.js');
 const emailer = require('./worklog-email.js');
+const calendar = require('./worklog-calendar.js'); // for calendarEnabled() in the notification title
 
 // ---------- args ----------
 const argv = process.argv.slice(2);
-const want = { daily: argv.includes('--daily'), weekly: argv.includes('--weekly'), email: argv.includes('--email') };
+const want = {
+  daily: argv.includes('--daily'),
+  weekly: argv.includes('--weekly'),
+  // deliver = "send the summary to every enabled target (email + calendar)". The 18:00 run
+  // omits it (interim); the 20:30 run passes it (final). --email is kept as a back-compat
+  // alias so the existing scheduled tasks (which pass --email) keep working unchanged.
+  deliver: argv.includes('--deliver') || argv.includes('--email'),
+};
 if (!want.daily && !want.weekly) want.daily = true; // default
-// --email gates email delivery: the 18:00 run omits it (interim); the 20:30 run includes it (final).
+// --only email|calendar restricts an on-demand delivery to a single channel (e.g. `send email`).
+const onlyIdx = argv.indexOf('--only');
+const only = onlyIdx >= 0 ? String(argv[onlyIdx + 1] || '').toLowerCase() : null;
+const deliverEmail = want.deliver && only !== 'calendar';
+const deliverCalendar = want.deliver && only !== 'email';
 let baseDate = lib.now();
 const di = argv.indexOf('--date');
 if (di >= 0 && argv[di + 1]) {
@@ -39,6 +51,18 @@ function resolveClaude() {
   return 'claude'; // hope it's on PATH
 }
 const CLAUDE = resolveClaude();
+
+// Output language for the AI summary — config.language, default Hebrew (= current behavior).
+// Injected into the prompt so the user can receive summaries in any language they choose.
+function summaryLanguage() {
+  try {
+    const cfg = JSON.parse(fs.readFileSync(path.join(lib.ROOT, 'config.json'), 'utf8'));
+    const v = cfg.language && String(cfg.language).trim();
+    return v || 'עברית';
+  } catch { return 'עברית'; }
+}
+const LANG = summaryLanguage();
+const langLine = `**שפת הפלט: ${LANG}.** כתוב את כל הסיכום — כולל כל הכותרות — בשפה זו. (התבנית למטה מוצגת בעברית להמחשת המבנה בלבד.)`;
 
 // Run Claude headless: prompt via stdin, summary text on stdout. Returns string or null.
 function claudeSummarize(prompt) {
@@ -126,7 +150,9 @@ function doDaily() {
     return;
   }
   const prompt =
-`אתה כותב סיכום-יום למפתח, על בסיס לוג העבודה הגולמי שלו. כתוב בעברית, ברמת-על — מה נעשה, מתי, באיזה נושא ופרויקט — בלי פרטים טכניים זעירים.
+`${langLine}
+
+אתה כותב סיכום-יום למפתח, על בסיס לוג העבודה הגולמי שלו, ברמת-על — מה נעשה, מתי, באיזה נושא ופרויקט — בלי פרטים טכניים זעירים.
 
 פורמט הפלט (Markdown בלבד, ללא הקדמות וללא טקסט נוסף):
 # סיכום יום — ${dateStr}
@@ -148,11 +174,13 @@ ${content}
   const ai = claudeSummarize(prompt);
   const finalContent = ai || fallbackSummary(`סיכום יום — ${dateStr}`, [{ content }]);
   write(out, finalContent);
-  const emailed = want.email && emailer.emailEnabled() ? emailer.sendSummary('סיכום יום — ' + dateStr, finalContent) : false;
-  const title = (want.email ? '📓 סיכום היום (סופי)' : '📓 סיכום היום מוכן') + ' — ' + dateStr + (emailed ? ' · 📧 נשלח למייל' : '');
+  const emailed = deliverEmail && emailer.emailEnabled() ? emailer.sendSummary('סיכום יום — ' + dateStr, finalContent) : false;
+  const toCal = deliverCalendar && calendar.calendarEnabled();
+  const tags = (emailed ? ' · 📧 נשלח למייל' : '') + (toCal ? ' · 🗓️ יומן' : '');
+  const title = (want.deliver ? '📓 סיכום היום (סופי)' : '📓 סיכום היום מוכן') + ' — ' + dateStr + tags;
   notifier.notify(title, previewOf(finalContent), out);
-  // final run only: sync the day's blocks + summary to Google Calendar (fail-safe, self-gated)
-  if (want.email) trySyncCalendar(lib.dateKey(baseDate));
+  // deliver run only: sync the day's blocks + summary to Google Calendar (fail-safe, self-gated)
+  if (toCal) trySyncCalendar(lib.dateKey(baseDate));
 }
 
 // ---------- weekly ----------
@@ -174,7 +202,9 @@ function doWeekly() {
   }
   const body = sources.map((s) => `### ${s.date} (${s.dow})\n${s.content}`).join('\n\n');
   const prompt =
-`אתה כותב סיכום שבועי למפתח על בסיס לוגים יומיים. כתוב בעברית, ברמת-על: מגמות, נושאים מרכזיים והתקדמות לאורך השבוע לפי פרויקט — לא רשימת אירועים יבשה.
+`${langLine}
+
+אתה כותב סיכום שבועי למפתח על בסיס לוגים יומיים, ברמת-על: מגמות, נושאים מרכזיים והתקדמות לאורך השבוע לפי פרויקט — לא רשימת אירועים יבשה.
 
 פורמט הפלט (Markdown בלבד, ללא טקסט מקדים):
 # סיכום ${label}
@@ -199,7 +229,7 @@ ${body}
   const ai = claudeSummarize(prompt);
   const finalContent = ai || fallbackSummary(`סיכום ${label}`, sources);
   write(out, finalContent);
-  const emailed = want.email && emailer.emailEnabled() ? emailer.sendSummary('סיכום שבועי — ' + label, finalContent) : false;
+  const emailed = deliverEmail && emailer.emailEnabled() ? emailer.sendSummary('סיכום שבועי — ' + label, finalContent) : false;
   notifier.notify('🗓️ סיכום שבועי מוכן — ' + label + (emailed ? ' · 📧 נשלח למייל' : ''), previewOf(finalContent), out);
 }
 

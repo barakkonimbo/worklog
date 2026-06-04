@@ -65,7 +65,11 @@ Sync then runs automatically at the 20:30 end-of-day run. See INSTALL.md for the
 ## Change settings later
 Map the user's intent to `worklog-config.js` (each change re-registers the tasks automatically):
 `email off` / `email on` · `calendar off` / `calendar on` · `email.time 21:00` · `email.days Sun-Thu` ·
-`weekly.day Sunday` · `weekly.time 08:00`. Run it with no args to show current settings.
+`weekly.day Sunday` · `weekly.time 08:00` · `language English` (summary output language, default עברית).
+Run it with no args to show current settings, or `status` for the unified view.
+
+Day-to-day control is the `/worklog` skill: `show` / `status` / `summary` / `week`, and `send` —
+regenerate today's summary and deliver it now to every enabled target (optionally `send email` / `send calendar`).
 
 ## Uninstall (only when asked)
 ```bash

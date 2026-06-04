@@ -21,12 +21,13 @@
 | Installer + הפצה (skill/zip, גרסאות) | ✅ הושלם ונבדק (אידמפוטנטי) |
 | הופץ לגיטהאב (dev repo + קטלוג) | ✅ worklog + youleap-Implementers/Features |
 | Google Calendar (opt-in, OAuth, DPAPI) | ✅ נבנה ואומת חי — setup/test/sync/idempotent (v0.7.0) |
+| ממשק on-demand (`send` + `status` + שפת-פלט) | ✅ נבנה ואומת — 18/18 בדיקות מבודדות (v0.7.1) |
 | תמיכה ב-macOS/Linux (תזמון) | ⏳ לא התחיל |
 
 ---
 
 ## 🎯 הצעד הבא (Next Up)
-1. **חבר צוות → גרסה 0.7.0** — לשלוח zip מעודכן, `/work-journal-setup`, ואופציונלית `--setup` למייל ו/או ליומן.
+1. **חבר צוות → גרסה 0.7.1** — לשלוח zip מעודכן, `/work-journal-setup`, ואופציונלית `--setup` למייל ו/או ליומן. כולל `send`/`status`/בחירת שפה.
 2. **Cross-platform** — תזמון `launchd`/`cron` ל-macOS/Linux (ההתראות כבר תומכות mac/linux).
 3. **שעות בבחירה בהתקנה** — לשאול שעות ב-`--setup` (כרגע ברירת מחדל + שינוי קל אח״כ).
 4. **Calendar — שיפורי E1/E3/E4** (עיגון-לרשומה, חפיפת חלונות, flush אחרי קריסה) לפי טבלת ה-Known Limitations.
@@ -34,13 +35,31 @@
 ---
 
 ## 💡 רעיונות לאפיון (אג׳נדה לצ'אט הבא)
-1. **ממשק on-demand + פקודות נוחות** — כבר יש `/worklog` (log/show/summary/week) + `worklog-config.js`. **פער:** אין "שלח עכשיו למייל/יומן" (הדליברי נעול ל-20:30). לאפיין: `/worklog send` או `summary --deliver` (מייל+יומן on-demand) + אולי תפריט סטטוס/toggle מאוחד.
+1. ✅ **ממשק on-demand — נבנה ואומת** (v0.7.1, [ONDEMAND-SPEC.md](./ONDEMAND-SPEC.md)): `worklog send` (regenerate→שלח לכל מופעל; גם `send email`/`calendar`) + `worklog status` (תצוגת-על) + בחירת **שפת סיכום** (`language`). 18/18 בדיקות מבודדות.
 2. **בידוד פר-משתמש** — *מאומת/תשובה (לא משימה):* כל חבר צוות OAuth משלו → יומן "Work Journal" בחשבון שלו, data מקומי, מייל לכתובתו. אין shared state — לא רואים אחד את התיעוד של השני.
 3. **פורמט מותאם-פלטפורמה** — להמיר את ה-Markdown הקנוני למבנה לפי היעד: מייל **HTML** (`<b>`/`<ul>`, `Send-MailMessage -BodyAsHtml`), תיאור אירוע יומן (HTML מוגבל), toast plain. **מבנה בלבד, לא תוכן.**
 
 ---
 
 ## 🗓️ לוג כרונולוגי
+
+### 2026-06-04 — מימוש ממשק on-demand (v0.7.1)
+**נעשה:**
+- מומש לפי ה-spec: `worklog send` (regenerate→שלח לכל יעד מופעל; בורר `send email`/`send calendar`), `worklog status` (תצוגת-על מאוחדת), ובחירת **שפת סיכום** (`config.language`, חופשי, ברירת מחדל עברית — מוזרק ל-prompt).
+- **refactor מינימלי, תאימות מלאה:** `--deliver` ב-summary כ-alias סמנטי ל-`--email` (ה-scheduler לא נגעתי); גארד "אין רשומות→אל תשלח"; `--only email|calendar`; הזרקת שפה ל-prompt יומי+שבועי. `status`+`language` ב-config; `language` ב-defaultConfig/describe.
+- **18/18 בדיקות מבודדות עברו** (USERPROFILE זמני + claude stub): syntax (11 קבצים), הזרקת שפה (English/עברית), gating יעדים, גארד אין-רשומות, `--only`, `status`. **אפס נגיעה בסביבה החיה.**
+- bump 0.7.1; סונכרנו 9 מסמכים (README/SUMMARY/ARCHITECTURE/DECISIONS D13/INSTALL/SKILL×2/SEND-TO-TEAMMATE/ONDEMAND-SPEC) + PROGRESS.
+
+**הבא:** build + push לשני הריפו (dev + קטלוג).
+
+### 2026-06-04 — אפיון ממשק on-demand (send + status)
+**נעשה:**
+- מופו 3 פערים: אין "שלח עכשיו" (דליברי נעול ל-20:30); הדגל `--email` מטעה (שולט גם ביומן); אין תצוגת-על מאוחדת.
+- אופיין מול המשתמש (4 הכרעות): פקודה `worklog send` (פועל ייעודי) · **תמיד regenerate** ואז שלח · **רק יעדים מופעלים** (בלי one-shot override) · `worklog status` מאוחד.
+- נכתב [ONDEMAND-SPEC.md](./ONDEMAND-SPEC.md): מודל הפקודות, refactor מינימלי (`--deliver` כ-alias ל-`--email`, גארד "אין רשומות", `status` ב-config), מקרי-קצה, ולא-בסקופ.
+- **תובנה:** "תמיד regenerate" היא ממילא התנהגות `doDaily` — המימוש בעיקר העברת דגל הדליברי + גארדים, לא לוגיקה חדשה.
+
+**הבא:** מימוש לפי ה-spec (Next Up #1) — שינוי `worklog-summary.js` + `worklog-config.js` + skill, bump 0.7.1, re-ship.
 
 ### 2026-06-04 — Google Calendar הושלם ואומת (v0.7.0)
 **נעשה:**

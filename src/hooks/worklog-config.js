@@ -13,6 +13,8 @@
  *   node worklog-config.js weekly.time 08:00    set weekly time
  *   node worklog-config.js calendar off|on      toggle Google Calendar sync (needs --setup first)
  *   node worklog-config.js calendar.summary off toggle the all-day "summary" event in Calendar
+ *   node worklog-config.js language English      set the AI summary output language (free-form)
+ *   node worklog-config.js status                unified status: today's activity + targets + schedule
  *
  * Multiple changes in one call are allowed. Config lives in ~/.claude/work-journal/config.json.
  */
@@ -21,6 +23,7 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 const schedule = require('./worklog-schedule.js');
+const lib = require('./worklog-lib.js');
 
 const ROOT = process.env.CLAUDE_CONFIG_DIR
   ? path.join(process.env.CLAUDE_CONFIG_DIR, 'work-journal')
@@ -36,6 +39,7 @@ function load() {
   try { c = JSON.parse(fs.readFileSync(CONFIG, 'utf8')); } catch { /* defaults */ }
   const d = schedule.defaultConfig();
   return {
+    language: c.language || d.language,
     email: { ...d.email, ...(c.email || {}) },
     weekly: { ...d.weekly, ...(c.weekly || {}) },
     calendar: { ...d.calendar, ...(c.calendar || {}) },
@@ -53,6 +57,22 @@ function show(c) {
   if (c.calendar && c.calendar.enabled && !fs.existsSync(CAL_CRED)) {
     console.log('\n⚠️  יומן מופעל אבל אין token שמור — הריצו:  node "' + path.join(__dirname, 'worklog-calendar.js').replace(/\\/g, '/') + '" --setup');
   }
+}
+
+// Unified status view: today's activity + targets + schedule + language (for `/worklog status`).
+function status(c) {
+  const today = lib.now();
+  const re = /^- (\d{2}:\d{2}) \[([^\]]+)\] (.+)$/;
+  let count = 0; const projects = new Set();
+  for (const ln of lib.readIf(lib.dailyFile(today)).split('\n')) {
+    const m = re.exec(ln.trim());
+    if (m) { count++; projects.add(m[2]); }
+  }
+  console.log('— Work Journal · סטטוס · ' + lib.dateKey(today) + ' (' + lib.hebDow(today) + ') —\n');
+  console.log('📋 היום: ' + (count ? count + ' רשומות · פרויקטים: ' + [...projects].join(', ') : 'אין רשומות עדיין'));
+  console.log('   סיכום יומי: ' + (fs.existsSync(lib.summaryFile(today)) ? 'נוצר ✓' : 'טרם נוצר'));
+  console.log('');
+  show(c); // targets + schedule + language + cred warnings
 }
 
 // Apply one "key value" / "key=value" / "email on|off" / "weekly on|off" change to config.
@@ -78,6 +98,10 @@ function applyChange(c, key, val) {
     case 'calendar.summary':
       if (on(val)) c.calendar.summaryEvent = true; else if (off(val)) c.calendar.summaryEvent = false; else return false;
       return true;
+    case 'language':
+      if (!val || !String(val).trim()) return false;
+      c.language = String(val).trim();
+      return true;
     default: return false;
   }
 }
@@ -86,6 +110,7 @@ function main() {
   const args = process.argv.slice(2);
   const c = load();
   if (!args.length) { show(c); return; }
+  if (args[0] === 'status') { status(c); return; }
 
   // tokenize into [key, value] pairs supporting "k=v" and "k v" and "email on"
   const changes = [];

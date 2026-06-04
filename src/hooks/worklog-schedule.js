@@ -36,6 +36,7 @@ function parseDays(input) {
 
 function defaultConfig() {
   return {
+    language: 'עברית', // output language for AI summaries (free-form; Claude writes in any language)
     email: {
       enabled: false, to: '', from: '', smtpHost: 'smtp.gmail.com', smtpPort: 587,
       time: '20:30', days: ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday'],
@@ -66,6 +67,7 @@ function describe(config) {
   } else {
     lines.push('• יומן Google: כבוי');
   }
+  lines.push('• שפת הסיכום: ' + (c.language || 'עברית'));
   return lines.join('\n');
 }
 

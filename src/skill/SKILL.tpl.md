@@ -1,6 +1,6 @@
 ---
 name: worklog
-description: Manual control of the global work-journal (יומן עבודה). Use when the user wants to log an entry by hand, see today's journal, or generate the daily/weekly summary on demand. Triggers on "/worklog", "תרשום ביומן", "log this to the journal", "what did I do today", "show my work journal", "generate today's summary now", "סיכום יום עכשיו", "סיכום שבועי". The automatic logging is handled by hooks; this skill is for explicit, on-demand actions.
+description: Manual control of the global work-journal (יומן עבודה). Use when the user wants to log an entry by hand, see today's journal or status, generate the daily/weekly summary, send it now to email/calendar on demand, or change settings like the summary language. Triggers on "/worklog", "תרשום ביומן", "log this to the journal", "what did I do today", "show my work journal", "worklog status", "מצב היומן", "send the summary now", "שלח עכשיו", "generate today's summary now", "סיכום יום עכשיו", "סיכום שבועי", "change summary language", "שנה שפת סיכום". The automatic logging is handled by hooks; this skill is for explicit, on-demand actions.
 ---
 
 # Work Journal — manual control
@@ -26,15 +26,31 @@ Confirm in one line what was logged. Keep entries short and high-level.
 Read `<JOURNAL>/<today>.md` and display it. If it doesn't exist,
 say nothing has been logged today yet. (Today's date is available in the session context.)
 
-## 3. Generate the daily summary now (don't wait for 18:00)
+## 3. Status — unified view ("what's my work-journal status / setup")
+`"<NODE>" "<HOOKS>/worklog-config.js" status`
+One block: today's activity (entries + projects, whether the daily summary exists),
+the targets (email/calendar on-off + whether configured + address), the summary language,
+and what is scheduled next. Print it back to the user.
+
+## 4. Generate the daily summary now — create only (don't wait for 18:00)
 `"<NODE>" "<HOOKS>/worklog-summary.js" --daily`
 Then read and show `<JOURNAL>/summary-<today>.md`. This invokes Claude headless (~30-60s).
+This only *writes* the summary file — it does NOT email or sync to calendar. To also send, use `send` (§6).
 
-## 4. Generate the weekly summary now
+## 5. Generate the weekly summary now
 `"<NODE>" "<HOOKS>/worklog-summary.js" --weekly`
 Then read and show the latest `<JOURNAL>/YYYY-Www-weekly.md`. (Summarizes the previous 7 days.)
 
-## 5. Settings — email on/off, times, days (easy)
+## 6. Send the summary now — deliver on-demand (regenerate + send)
+For "send now" / "שלח עכשיו" / "email me the summary now". Regenerates today's summary and sends it
+to every ENABLED target (email if on, calendar if on):
+`"<NODE>" "<HOOKS>/worklog-summary.js" --daily --deliver`
+- Single target only: add `--only email` or `--only calendar` (e.g. "send just the email now").
+- It sends only to targets that are **enabled**. If none are enabled, tell the user nothing was sent and
+  point to §7/§8 to enable. If there are no entries today, nothing is sent ("no activity logged today").
+- Report what was delivered (the command prints `sent to …` / `synced …`).
+
+## 7. Settings — email/calendar on/off, times, days, language (easy)
 Settings live in `<JOURNAL>/config.json` and are changed via the config tool, which also
 re-registers the scheduled tasks automatically. Map the user's intent to one call:
 - Show current settings: `"<NODE>" "<HOOKS>/worklog-config.js"`
@@ -43,12 +59,14 @@ re-registers the scheduled tasks automatically. Map the user's intent to one cal
 - Days: `… worklog-config.js email.days Sun-Thu`  (or `Sun,Mon,Tue,Wed,Thu`)
 - Weekly: `… worklog-config.js weekly off` · `weekly.day Sunday` · `weekly.time 08:00`
 - Google Calendar OFF / ON: `… worklog-config.js calendar off` / `calendar on` (needs `--setup` first)
+- Summary language: `… worklog-config.js language English` (free-form, e.g. `English`/`עברית`/`Español`;
+  default עברית). Sets the language Claude writes the summary in — affecting what's sent to all targets.
 
 Two-level model: first choice is whether email/calendar are on at all (default OFF). If on, email uses the
 defaults — daily **20:30 Sun–Thu**, weekly **Sunday 08:00** — or the user's own times/days.
 The **18:00 Sun–Thu** interim notification (toast only) is fixed and always on.
 
-## 6. Enable email / Google Calendar for the first time
+## 8. Enable email / Google Calendar for the first time
 Both are OFF by default and need a one-time setup with hidden input / browser consent, so tell the user
 to run it in their OWN terminal (PowerShell/cmd) — not via this skill:
 - **Email:** `node "<HOOKS>/worklog-email.js" --setup`  then  `… --test` (Gmail App Password).
@@ -60,4 +78,5 @@ to run it in their OWN terminal (PowerShell/cmd) — not via this skill:
 ## Notes
 - The summary generator prevents recursion (`WORKLOG_DISABLE=1`), so running it from a session is safe.
 - For a specific past date: append `--date YYYY-MM-DD` to the summary command.
+- `send` = `--daily --deliver`; the scheduled 20:30 run uses `--daily --email` (a back-compat alias of `--deliver`).
 - Full design is documented in the work-journal project (`docs/`).

@@ -31,7 +31,7 @@
 
 ## שימוש אחרי ההתקנה
 - **אוטומטי:** נטען בכל סשן; קלוד מתעד בנקודות מפתח; התראת 18:00.
-- **ידני:** `/worklog <טקסט>` לרשום · `/worklog show` להציג · `/worklog summary` סיכום מיידי.
+- **ידני:** `/worklog <טקסט>` לרשום · `/worklog show` להציג · `/worklog status` תמונת-מצב · `/worklog summary` סיכום מיידי · `/worklog send` לשלוח את הסיכום עכשיו (מייל/יומן).
 
 ## מייל בסוף יום (אופציונלי — כבוי כברירת מחדל)
 מי שרוצה מייל מפעיל פעם אחת:
@@ -64,6 +64,8 @@
 - יומן off/on: `… worklog-config.js calendar off` · `calendar on`
 - שעה/ימים: `… worklog-config.js email.time 21:00` · `email.days Sun-Thu`
 - שבועי: `… worklog-config.js weekly.day Sunday` · `weekly.time 08:00` · `weekly off`
+- שפת הסיכום: `… worklog-config.js language English` (חופשי; ברירת מחדל עברית)
+- תמונת-מצב מאוחדת: `… worklog-config.js status`
 
 ## הסרה
 - `node uninstall.js` — מסיר את המערכת, שומר את הלוגים.

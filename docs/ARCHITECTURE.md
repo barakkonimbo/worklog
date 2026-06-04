@@ -69,14 +69,15 @@
 - תמיד מנקה את ה-marker. Exit 0 (לא-חוסם).
 
 ### `worklog-summary.js` — מחולל הסיכום
-- דגלים: `--daily` (ברירת מחדל), `--weekly`, `--date YYYY-MM-DD` (override לבדיקה).
+- דגלים: `--daily` (ברירת מחדל), `--weekly`, `--date YYYY-MM-DD` (override לבדיקה), `--deliver` (דליברי on-demand), `--only email|calendar` (בורר יעד), `--email` (**alias תאימות-לאחור** ל-`--deliver`; ה-scheduler משתמש בו).
 - `resolveClaude()`: `WORKLOG_CLAUDE` → `%APPDATA%/npm/claude.cmd` → `claude` (PATH).
 - `claudeSummarize(prompt)`: `spawnSync(claude, ['-p'], {input:prompt, shell:true, env:{...,WORKLOG_DISABLE:'1'}})`.
   **קלוד מדפיס ל-stdout; node כותב את הקובץ** (אין צורך בהרשאת Write בהרצה headless).
+- **שפת פלט:** קורא `config.language` (ברירת מחדל עברית) ומזריק שורת-הוראה לראש ה-prompt (יומי+שבועי) — קלוד כותב את כל הסיכום בשפה זו (תוכן בלבד; אפס טוקנים נוספים).
 - `fallbackSummary()`: אם קלוד נכשל/לא זמין → מקבץ רשומות לפי פרויקט (ללא AI). הקובץ תמיד נוצר.
-- `--email`: שולח גם מייל (אם מופעל). 18:00 רץ בלי הדגל (ביניים); 20:30 איתו (סופי).
+- **דליברי:** `want.deliver = --deliver || --email`; `deliverEmail`/`deliverCalendar` נגזרים מ-`--only`. שולח **רק ליעד מופעל**. 18:00 רץ בלי דליברי (ביניים); 20:30 עם `--email` (סופי). **גארד:** אם אין רשומות היום → נכתב placeholder, ו**אין** דליברי.
 - שבועי: אוסף את **7 הימים שקדמו להיום** (עד אתמול) — "השבוע שעבר" כשרץ ראשון בבוקר. כולל חלק "נשאר פתוח".
-- אחרי הכתיבה: `worklog-notify.js` (התראה לחיצה) + `worklog-email.js` (אם `--email` ומופעל) + `worklog-calendar.js --sync` (spawn נפרד fail-safe, בריצת `--email` בלבד, אם calendar מופעל).
+- אחרי הכתיבה: `worklog-notify.js` (התראה לחיצה; הכותרת משקפת 📧/🗓️ כשנשלח) + `worklog-email.js` (אם דליברי-מייל ומופעל) + `worklog-calendar.js --sync` (spawn נפרד fail-safe, אם דליברי-יומן ומופעל).
 
 ### `worklog-notify.js` — התראת toast לחיצה
 - Windows: WinRT toast תחת ה-AppId של PowerShell (ללא מודול/רישום). מקבל `title, message, launchPath`.
@@ -91,10 +92,11 @@
 
 ### `worklog-config.js` — מנוע הגדרות
 - קורא/ממזג/כותב `config.json`. CLI: `email on/off`, `email.time`, `email.days` (תומך `Sun-Thu`),
-  `weekly.day/time/off`. **כל שינוי קורא ל-`registerTasks` → רישום מחדש** (אין drift הגדרות↔תזמון).
+  `weekly.day/time/off`, `calendar on/off`, `language <free-form>`. **כל שינוי קורא ל-`registerTasks` → רישום מחדש** (אין drift הגדרות↔תזמון).
+- `status` — תצוגת-על (read-only): פעילות היום (רשומות+פרויקטים, האם הסיכום נוצר) + יעדים (on/off + מצב cred) + שפה + `describe()`.
 
 ### `worklog-schedule.js` — רישום משימות מ-config (משותף ל-install/config/email/calendar)
-- `defaultConfig()`, `parseDays()`, `registerTasks(...)`, `describe()`.
+- `defaultConfig()` (כולל `language: 'עברית'`), `parseDays()`, `registerTasks(...)`, `describe()` (כולל שורת שפה).
 - רישום = איפוס מלא (Unregister-all → register applicable), כולל ניקוי `WorkJournal-Daily` הישן.
 - בונה: `WorkJournal-Notify` (18:00 א׳–ה׳, קבוע) · `WorkJournal-DailyEmail` (אם email **או** calendar מופעלים) · `WorkJournal-Weekly` (אם email.enabled).
 
