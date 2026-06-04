@@ -75,7 +75,8 @@ to run it in their OWN terminal (PowerShell/cmd) — not via this skill:
 - **Email:** `node "<HOOKS>/worklog-email.js" --setup`  then  `… --test` (Gmail App Password).
 - **Google Calendar:** create a Desktop OAuth client in Google Cloud (enable Calendar API · consent screen
   Internal · copy Client ID+Secret), then `node "<HOOKS>/worklog-calendar.js" --setup`  then  `… --test`.
-  Syncs time-blocks + a daily summary event to a dedicated "Work Journal" calendar at the 20:30 run.
+  Syncs time-blocks + a daily summary event to a dedicated "Work Journal" calendar — on every session
+  close (a continuous mirror) and at the 20:30 run (which also refreshes the summary event).
   (Full step-by-step in the project's INSTALL.md.)
 
 ## Notes

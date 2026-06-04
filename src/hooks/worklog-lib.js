@@ -4,7 +4,7 @@
 // Journal layout (all under ~/.claude/work-journal/):
 //   YYYY-MM-DD.md            daily log  (append-only entries)
 //   summary-YYYY-MM-DD.md    daily summary  (generated 18:00)
-//   YYYY-Www-weekly.md       weekly summary (generated Friday)
+//   YYYY-Www-weekly.md       weekly summary (generated Sunday 08:00)
 //   .sessions/<id>.json      per-session marker (hybrid safety-net bookkeeping)
 
 const fs = require('fs');

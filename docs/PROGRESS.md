@@ -43,6 +43,15 @@
 
 ## 🗓️ לוג כרונולוגי
 
+### 2026-06-05 — ביקורת עקביות מסמכים + תיקוני uninstall (השלמת 0.7.3)
+**נעשה:**
+- סריקה שיטתית של כל המסמכים בשני הריפו מול 0.7.3 (Explore + ידנית על `src/`, שה-Explore לא כיסה).
+- תוקנו: version badges (README 0.7.2→0.7.3, SEND-TO-TEAMMATE 0.7.1→0.7.3 + הוספת status/send/help להודעת-הצוות), הוראת calendar ל-mirror (`SKILL.tpl` §8, `INSTALL` כותרת+פתיח), comments מיושנים (`summary.js` "Friday weekly"→Sunday, `lib.js` "generated Friday").
+- **2 באגי `uninstall.js` שתוקנו:** (1) לא הסיר `WorkJournal-Notify` (משימת 18:00 נשארה תלויה); (2) `HOOK_FILES` קשיח הסיר רק 5/11 hooks — שונה ל**מחיקה גנרית** `worklog-*.js` (עמיד-לעתיד, תואם ל-install שמעתיק את כל התיקייה).
+- **ללא bump** — השלמת 0.7.3 (נדחף דקות קודם, טרם אומץ); נמנע version-churn מיותר (החלטה אחרי שהמשתמש העיר).
+
+**הבא:** build + push לשני הריפו (patch תחת 0.7.3).
+
 ### 2026-06-04 — help (v0.7.2) + יומן כ-mirror מתמשך (v0.7.3)
 **נעשה:**
 - **v0.7.2:** `/worklog help` — מסך אחד עם כל הפקודות (סקיל + CLI; מנוע `worklog-config.js help`). תיקון `install.js` (שימור calendar+language ברישום משימות מחדש). הותקן חי + נדחף לשני הריפו.

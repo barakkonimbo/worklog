@@ -22,20 +22,21 @@ const HOOKS_DIR = path.join(CLAUDE_DIR, 'hooks');
 const SKILLS_DIR = path.join(CLAUDE_DIR, 'skills');
 const JOURNAL_DIR = path.join(CLAUDE_DIR, 'work-journal');
 
-const HOOK_FILES = [
-  'worklog-lib.js', 'worklog-log.js',
-  'worklog-session-start.js', 'worklog-session-end.js', 'worklog-summary.js',
-];
-
 function rm(p) { try { fs.rmSync(p, { recursive: true, force: true }); return true; } catch { return false; } }
 
 console.log('Work Journal — uninstaller');
 log('config dir: ' + fwd(CLAUDE_DIR));
 console.log('');
 
-// 1. hooks
+// 1. hooks — remove EVERY worklog-*.js (mirrors install.js, which copies the whole hooks dir).
+// A hard-coded list silently goes stale as hooks are added (notify/email/config/schedule/blocks/calendar),
+// leaving orphaned files behind — so match by prefix instead.
 let n = 0;
-for (const f of HOOK_FILES) if (rm(path.join(HOOKS_DIR, f))) n++;
+try {
+  for (const f of fs.readdirSync(HOOKS_DIR)) {
+    if (/^worklog-.*\.js$/.test(f) && rm(path.join(HOOKS_DIR, f))) n++;
+  }
+} catch { /* hooks dir absent — nothing to remove */ }
 log('hooks: removed ' + n + ' files');
 
 // 2. skill
@@ -76,9 +77,11 @@ if (fs.existsSync(settingsPath)) {
 
 // 5. scheduled tasks (Windows)
 if (process.platform === 'win32') {
-  const ps = "Unregister-ScheduledTask -TaskName 'WorkJournal-Daily','WorkJournal-DailyEmail','WorkJournal-Weekly' -Confirm:$false -ErrorAction SilentlyContinue; Write-Output 'ok'";
+  // Remove every task the system may have registered, including the fixed 18:00 WorkJournal-Notify
+  // and the legacy WorkJournal-Daily (renamed in v0.6) — otherwise a stale task lingers after uninstall.
+  const ps = "Unregister-ScheduledTask -TaskName 'WorkJournal-Daily','WorkJournal-Notify','WorkJournal-DailyEmail','WorkJournal-Weekly' -Confirm:$false -ErrorAction SilentlyContinue; Write-Output 'ok'";
   const r = spawnSync('powershell', ['-NoProfile', '-NonInteractive', '-Command', ps], { encoding: 'utf8' });
-  log('scheduling: removed WorkJournal-Daily / WorkJournal-Weekly' + (r.status === 0 ? '' : ' (may not have existed)'));
+  log('scheduling: removed WorkJournal-Notify / DailyEmail / Weekly' + (r.status === 0 ? '' : ' (may not have existed)'));
 }
 
 // 6. journal data

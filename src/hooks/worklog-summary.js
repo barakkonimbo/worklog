@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // worklog-summary.js — generate the daily and/or weekly work-journal summary.
 //
-// Invoked by Windows Task Scheduler (18:00 daily, Friday weekly), or manually:
+// Invoked by Windows Task Scheduler (18:00 interim notify, 20:30 final email, Sunday weekly), or manually:
 //   node worklog-summary.js --daily               summary for today
 //   node worklog-summary.js --weekly              weekly rollup (current ISO week)
 //   node worklog-summary.js --daily --weekly      both
@@ -124,7 +124,8 @@ function previewOf(md) {
   return lines.slice(0, 2).join(' • ').slice(0, 160) || 'הסיכום מוכן';
 }
 
-// Calendar sync runs only on the FINAL end-of-day run (--email). Spawned as a separate
+// Calendar sync here runs on the 20:30 end-of-day run (--email) — this run also refreshes the summary
+// event. (The continuous mirror — every session close — lives in worklog-session-end.js.) Spawned as a separate
 // process so a calendar/network failure can NEVER break the summary, email, or notification.
 // worklog-calendar.js self-gates (exits quietly if calendar is disabled).
 function trySyncCalendar(dateStr) {
