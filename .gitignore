@@ -1,0 +1,14 @@
+# Build output — regenerate with: node build.js
+dist/
+*.zip
+
+# Node
+node_modules/
+
+# OS / editor junk
+.DS_Store
+Thumbs.db
+desktop.ini
+.idea/
+*.swp
+*.log

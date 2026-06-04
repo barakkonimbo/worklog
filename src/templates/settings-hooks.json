@@ -1,0 +1,25 @@
+{
+  "_comment": "תבנית עבור ה-installer. ה-installer ממזג את הערכים האלה ל-~/.claude/settings.json: את קבוצת SessionStart מוסיפים (append) למערך hooks.SessionStart הקיים; את SessionEnd יוצרים אם חסר, אחרת append. החלף {{NODE}} בנתיב node המקומי ו-{{HOOKS_DIR}} בתיקיית ה-hooks (למשל ~/.claude/hooks). מיזוג חייב להיות אידמפוטנטי — לזהות לפי שם הסקריפט ולא לשכפל.",
+  "SessionStart": [
+    {
+      "hooks": [
+        {
+          "type": "command",
+          "command": "\"{{NODE}}\" \"{{HOOKS_DIR}}/worklog-session-start.js\"",
+          "timeout": 10
+        }
+      ]
+    }
+  ],
+  "SessionEnd": [
+    {
+      "hooks": [
+        {
+          "type": "command",
+          "command": "\"{{NODE}}\" \"{{HOOKS_DIR}}/worklog-session-end.js\"",
+          "timeout": 15
+        }
+      ]
+    }
+  ]
+}
