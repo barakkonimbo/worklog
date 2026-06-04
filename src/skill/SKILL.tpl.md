@@ -1,6 +1,6 @@
 ---
 name: worklog
-description: Manual control of the global work-journal (יומן עבודה). Use when the user wants to log an entry by hand, see today's journal or status, generate the daily/weekly summary, send it now to email/calendar on demand, or change settings like the summary language. Triggers on "/worklog", "תרשום ביומן", "log this to the journal", "what did I do today", "show my work journal", "worklog status", "מצב היומן", "send the summary now", "שלח עכשיו", "generate today's summary now", "סיכום יום עכשיו", "סיכום שבועי", "change summary language", "שנה שפת סיכום". The automatic logging is handled by hooks; this skill is for explicit, on-demand actions.
+description: Manual control of the global work-journal (יומן עבודה). Use when the user wants to log an entry by hand, see today's journal or status, generate the daily/weekly summary, send it now to email/calendar on demand, or change settings like the summary language. Triggers on "/worklog", "תרשום ביומן", "log this to the journal", "what did I do today", "show my work journal", "worklog status", "מצב היומן", "worklog help", "what can the work journal do", "אילו פקודות יש ביומן", "send the summary now", "שלח עכשיו", "generate today's summary now", "סיכום יום עכשיו", "סיכום שבועי", "change summary language", "שנה שפת סיכום". The automatic logging is handled by hooks; this skill is for explicit, on-demand actions.
 ---
 
 # Work Journal — manual control
@@ -15,6 +15,9 @@ Constants (filled in at install time):
 - JOURNAL = `{{JOURNAL_DIR}}`
 
 Decide the action from the user's argument/intent:
+
+> **Help / "what can I do" / `/worklog help`** → run `"<NODE>" "<HOOKS>/worklog-config.js" help` and
+> show its output verbatim (the full command list — both the `/worklog` skill actions and the direct CLI).
 
 ## 1. Log an entry (default when free text is given)
 Run via Bash, project tag inferred from the current working directory:

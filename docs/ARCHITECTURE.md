@@ -94,6 +94,7 @@
 - קורא/ממזג/כותב `config.json`. CLI: `email on/off`, `email.time`, `email.days` (תומך `Sun-Thu`),
   `weekly.day/time/off`, `calendar on/off`, `language <free-form>`. **כל שינוי קורא ל-`registerTasks` → רישום מחדש** (אין drift הגדרות↔תזמון).
 - `status` — תצוגת-על (read-only): פעילות היום (רשומות+פרויקטים, האם הסיכום נוצר) + יעדים (on/off + מצב cred) + שפה + `describe()`.
+- `help` — מדפיס את כל הפקודות (סקיל `/worklog` + ה-CLI הישיר). נקרא מ-`/worklog help`.
 
 ### `worklog-schedule.js` — רישום משימות מ-config (משותף ל-install/config/email/calendar)
 - `defaultConfig()` (כולל `language: 'עברית'`), `parseDays()`, `registerTasks(...)`, `describe()` (כולל שורת שפה).

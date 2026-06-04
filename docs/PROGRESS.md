@@ -21,13 +21,13 @@
 | Installer + הפצה (skill/zip, גרסאות) | ✅ הושלם ונבדק (אידמפוטנטי) |
 | הופץ לגיטהאב (dev repo + קטלוג) | ✅ worklog + youleap-Implementers/Features |
 | Google Calendar (opt-in, OAuth, DPAPI) | ✅ נבנה ואומת חי — setup/test/sync/idempotent (v0.7.0) |
-| ממשק on-demand (`send` + `status` + שפת-פלט) | ✅ נבנה ואומת — 18/18 בדיקות מבודדות (v0.7.1) |
+| ממשק on-demand (`send`/`status`/`help`/שפת-פלט) | ✅ נבנה ואומת — 18/18 בדיקות מבודדות (v0.7.2) |
 | תמיכה ב-macOS/Linux (תזמון) | ⏳ לא התחיל |
 
 ---
 
 ## 🎯 הצעד הבא (Next Up)
-1. **חבר צוות → גרסה 0.7.1** — לשלוח zip מעודכן, `/work-journal-setup`, ואופציונלית `--setup` למייל ו/או ליומן. כולל `send`/`status`/בחירת שפה.
+1. **חבר צוות → גרסה 0.7.2** — לשלוח zip מעודכן, `/work-journal-setup`, ואופציונלית `--setup` למייל ו/או ליומן. כולל `send`/`status`/`help`/בחירת שפה.
 2. **Cross-platform** — תזמון `launchd`/`cron` ל-macOS/Linux (ההתראות כבר תומכות mac/linux).
 3. **שעות בבחירה בהתקנה** — לשאול שעות ב-`--setup` (כרגע ברירת מחדל + שינוי קל אח״כ).
 4. **Calendar — שיפורי E1/E3/E4** (עיגון-לרשומה, חפיפת חלונות, flush אחרי קריסה) לפי טבלת ה-Known Limitations.

@@ -15,6 +15,7 @@
  *   node worklog-config.js calendar.summary off toggle the all-day "summary" event in Calendar
  *   node worklog-config.js language English      set the AI summary output language (free-form)
  *   node worklog-config.js status                unified status: today's activity + targets + schedule
+ *   node worklog-config.js help                  list every command (skill + CLI)
  *
  * Multiple changes in one call are allowed. Config lives in ~/.claude/work-journal/config.json.
  */
@@ -75,6 +76,40 @@ function status(c) {
   show(c); // targets + schedule + language + cred warnings
 }
 
+// Full command reference — skill + CLI — for `/worklog help`.
+function help() {
+  const H = __dirname.replace(/\\/g, '/');
+  const J = lib.ROOT.replace(/\\/g, '/');
+  const q = (f) => 'node "' + H + '/' + f + '"';
+  console.log(`— Work Journal · עזרה · כל הפקודות —
+
+📝 דרך הסקיל /worklog (בקשה רגילה ל-Claude):
+  /worklog <טקסט>           רשומה ידנית ליומן
+  /worklog show             הצגת יומן היום
+  /worklog status           תמונת-מצב: היום + יעדים + שפה + תזמון
+  /worklog summary          סיכום יומי עכשיו (יצירה בלבד)
+  /worklog week             סיכום שבועי עכשיו
+  /worklog send             מחדש ושולח עכשיו לכל יעד מופעל (מייל/יומן)
+  /worklog send email       שליחה עכשיו רק במייל
+  /worklog send calendar    סנכרון עכשיו רק ליומן
+  /worklog help             המסך הזה
+  הגדרות בשפה חופשית:        "כבה מייל" · "תשלח ב-21:00" · "שבועי ביום ה׳" · "שפה לאנגלית"
+
+⚙️  CLI ישיר (PowerShell/cmd) — למתקדמים:
+  ${q('worklog-config.js')}                  הצג הגדרות (ללא ארגומנט)
+  ${q('worklog-config.js')} status           תמונת-מצב מאוחדת
+  ${q('worklog-config.js')} email on|off · email.time 21:00 · email.days Sun-Thu
+  ${q('worklog-config.js')} calendar on|off · weekly off · weekly.day Sunday · weekly.time 08:00
+  ${q('worklog-config.js')} language English      (ברירת מחדל: עברית)
+  ${q('worklog-summary.js')} --daily|--weekly [--deliver] [--only email|calendar] [--date YYYY-MM-DD]
+  ${q('worklog-email.js')} --setup | --test | --disable
+  ${q('worklog-calendar.js')} --setup | --test | --sync | --disable
+  ${q('worklog-log.js')} --msg "..." [--project NAME]
+
+⏰ אוטומטי (Task Scheduler): 18:00 התראה · 20:30 מייל+יומן (אם מופעל) · ראשון 08:00 שבועי
+📂 נתונים וסיכומים: ${J}`);
+}
+
 // Apply one "key value" / "key=value" / "email on|off" / "weekly on|off" change to config.
 function applyChange(c, key, val) {
   key = key.toLowerCase();
@@ -111,6 +146,7 @@ function main() {
   const c = load();
   if (!args.length) { show(c); return; }
   if (args[0] === 'status') { status(c); return; }
+  if (args[0] === 'help' || args[0] === '--help' || args[0] === '-h') { help(); return; }
 
   // tokenize into [key, value] pairs supporting "k=v" and "k v" and "email on"
   const changes = [];

@@ -68,8 +68,9 @@ Map the user's intent to `worklog-config.js` (each change re-registers the tasks
 `weekly.day Sunday` · `weekly.time 08:00` · `language English` (summary output language, default עברית).
 Run it with no args to show current settings, or `status` for the unified view.
 
-Day-to-day control is the `/worklog` skill: `show` / `status` / `summary` / `week`, and `send` —
-regenerate today's summary and deliver it now to every enabled target (optionally `send email` / `send calendar`).
+Day-to-day control is the `/worklog` skill: `help` (full command list) / `show` / `status` / `summary` /
+`week`, and `send` — regenerate today's summary and deliver it now to every enabled target (optionally
+`send email` / `send calendar`).
 
 ## Uninstall (only when asked)
 ```bash

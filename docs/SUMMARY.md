@@ -1,6 +1,6 @@
 # סיכום מלא — מה בנינו (Work Journal)
 
-> מסמך זה מסכם **בדיוק** מה נעשה בפיתוח מערכת ה-work-journal, נכון לגרסה **0.7.1** (2026-06-04).
+> מסמך זה מסכם **בדיוק** מה נעשה בפיתוח מערכת ה-work-journal, נכון לגרסה **0.7.2** (2026-06-04).
 > טכני עמוק → [ARCHITECTURE.md](./ARCHITECTURE.md) · הנמקות → [DECISIONS.md](./DECISIONS.md) · התקדמות → [PROGRESS.md](./PROGRESS.md).
 
 ---
@@ -45,7 +45,7 @@
 | `worklog-email.js` | מייל אופציונלי (Gmail/SMTP); `--setup`/`--test`; סיסמה מוצפנת DPAPI |
 | `worklog-blocks.js` | חישוב בלוקי-זמן (טהור, 0 AI) מסשנים+רשומות — מעוגן-סשנים, גזום-פערים (נבדק 9/9) |
 | `worklog-calendar.js` | סנכרון Google Calendar אופציונלי (OAuth2 loopback, REST); `--setup`/`--test`/`--sync`; token מוצפן DPAPI |
-| `worklog-config.js` | מנוע הגדרות קל (email/calendar on/off, שעות, ימים, **שפה**) + **`status`** מאוחד — כל שינוי רושם מחדש משימות |
+| `worklog-config.js` | מנוע הגדרות קל (email/calendar on/off, שעות, ימים, **שפה**) + **`status`** מאוחד + **`help`** (כל הפקודות) — כל שינוי רושם מחדש משימות |
 | `worklog-schedule.js` | רישום המשימות מתוך config (משותף; 20:30 נרשם אם email **או** calendar) |
 
 **שילוב במערכת:** בלוק ב-`CLAUDE.md` · רשומות `SessionStart`+`SessionEnd` ב-`settings.json` (אדיטיבי,
@@ -67,7 +67,7 @@
 4. **18:00 א׳–ה׳** → `--daily`: סיכום ביניים + **התראת toast לחיצה** (ללא מייל).
 5. **20:30 א׳–ה׳** → `--daily --email`: סיכום **סופי** + מייל (אם מופעל) + **סנכרון Google Calendar** — בלוקים + סיכום (אם מופעל).
 6. **ראשון 08:00** → `--weekly --email`: סיכום **השבוע שעבר** + פתוחים + מייל.
-7. **on-demand** (כל רגע, דרך `/worklog`) → `send` מחדש ושולח עכשיו לכל יעד מופעל · `status` תמונת-מצב · `language` בחירת שפת הסיכום.
+7. **on-demand** (כל רגע, דרך `/worklog`) → `send` מחדש ושולח עכשיו · `status` תמונת-מצב · `help` כל הפקודות · `language` בחירת שפת הסיכום.
 
 ---
 
@@ -94,10 +94,10 @@
 
 ---
 
-## 6. סטטוס נוכחי (0.7.1)
+## 6. סטטוס נוכחי (0.7.2)
 
 - ✅ **פעיל ומאומת** אצל המשתמש + אצל חבר צוות אחד. ניתן להפצה (zip).
-- ✅ מייל, התראות-לחיצה, הגדרות-קלות, פיצול תזמון, **Google Calendar** (opt-in, OAuth, DPAPI), **וממשק on-demand** (`send`/`status`/בחירת שפה) — הכול עובד.
+- ✅ מייל, התראות-לחיצה, הגדרות-קלות, פיצול תזמון, **Google Calendar** (opt-in, OAuth, DPAPI), **וממשק on-demand** (`send`/`status`/`help`/בחירת שפה) — הכול עובד.
 - ⏳ **טרם:** תזמון cross-platform (mac/Linux); בחירת שעות בזמן ההתקנה; שיפורי E1/E3/E4 ביומן (Known Limitations).
 
 המשך וסדר עדיפויות → [PROGRESS.md](./PROGRESS.md).

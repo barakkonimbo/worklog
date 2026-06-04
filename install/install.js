@@ -11,7 +11,7 @@
  *   2. installs the /worklog skill      -> <claude>/skills/worklog/SKILL.md   (paths substituted)
  *   3. merges the work-journal block    -> <claude>/CLAUDE.md                 (between markers)
  *   4. merges SessionStart+SessionEnd   -> <claude>/settings.json             (idempotent, backed up)
- *   5. registers scheduled summaries    -> Windows Task Scheduler (18:00 daily / Fri 18:05 weekly)
+ *   5. registers scheduled summaries    -> Windows Task Scheduler (per config: 18:00 notify / 20:30 email+calendar / Sun weekly)
  *   6. ensures the journal data dir exists
  *
  * Paths are resolved locally (os.homedir, process.execPath) so it works on any machine.
@@ -144,7 +144,15 @@ function registerWindowsTasks() {
   let cfg = schedule.defaultConfig();
   try {
     const ex = JSON.parse(fs.readFileSync(path.join(JOURNAL_DIR, 'config.json'), 'utf8'));
-    cfg = { email: { ...cfg.email, ...(ex.email || {}) }, weekly: { ...cfg.weekly, ...(ex.weekly || {}) } };
+    // preserve ALL saved settings (email, weekly, calendar, language) so re-running the
+    // installer never silently drops a task — e.g. a calendar-only user (no email) still
+    // gets the 20:30 task, which registerTasks adds when email OR calendar is enabled.
+    cfg = {
+      language: ex.language || cfg.language,
+      email: { ...cfg.email, ...(ex.email || {}) },
+      weekly: { ...cfg.weekly, ...(ex.weekly || {}) },
+      calendar: { ...cfg.calendar, ...(ex.calendar || {}) },
+    };
   } catch { /* no existing config -> defaults (email off until --setup) */ }
   const res = schedule.registerTasks({ node: NODE, summaryScript: path.join(HOOKS_DIR, 'worklog-summary.js'), config: cfg });
   if (res.ok) log('scheduling: interim 18:00 (Sun-Thu) + email/weekly per config');
