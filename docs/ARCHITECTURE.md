@@ -86,8 +86,7 @@
 - fail-safe (לא זורק), no-op אם `WORKLOG_NO_NOTIFY=1`. mac: `osascript` · linux: `notify-send`.
 
 ### `worklog-email.js` — מייל אופציונלי (Gmail/SMTP)
-- `--setup` (אינטראקטיבי): כתובת/host/port + App Password (קלט מוסתר), מצפין **DPAPI**
-  (`ConvertFrom-SecureString`) ל-`.email-cred`, כותב `config.json`, ורושם מחדש משימות.
+- `--setup` (אינטראקטיבי): **כל הקלט ב-PowerShell יחיד** (prompts באנגלית למניעת היפוך-RTL ב-console; קורא-stdin אחד למניעת race של ה-`Read-Host`). כתובת/host/port + App Password (מוסתר) → מצפין **DPAPI** ל-`.email-cred`, מחזיר שדות ל-Node דרך JSON זמני, כותב `config.json`, רושם מחדש משימות.
 - `sendSummary()`: ממיר את ה-Markdown ל-**HTML** (`worklog-format.toHtml`) ושולח `Send-MailMessage -BodyAsHtml -UseSsl` עם סיסמה מפוענחת DPAPI. `emailEnabled()` בודק enabled+cred.
 - `--test` שולח מייל בדיקה. כבוי כברירת מחדל.
 

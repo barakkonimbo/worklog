@@ -40,7 +40,7 @@
    - *Google Workspace:* אם אין "App passwords" — האדמין חוסם; דברו איתו או השתמשו ב-SMTP גנרי.
 2. **הפעלה** (ב-PowerShell/cmd — **לא** דרך Claude, כי הסיסמה מוסתרת):
    `node "%USERPROFILE%\.claude\hooks\worklog-email.js" --setup`
-   רצף השאלות: כתובת קבלה → כתובת שולח (Enter=אותה) → SMTP host (Enter=`smtp.gmail.com`) →
+   רצף השאלות (ה-prompts באנגלית): כתובת קבלה → כתובת שולח (Enter=אותה) → SMTP host (Enter=`smtp.gmail.com`) →
    port (Enter=`587`) → **App Password** (הדבק; לא יוצג על המסך — תקין).
 3. **בדיקה:** `node "%USERPROFILE%\.claude\hooks\worklog-email.js" --test` → אמור להגיע מייל.
 

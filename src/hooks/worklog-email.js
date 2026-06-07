@@ -18,7 +18,6 @@
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
-const readline = require('readline');
 const { spawnSync } = require('child_process');
 const fmt = require('./worklog-format.js');
 
@@ -70,39 +69,57 @@ function sendSummary(subject, body) {
 }
 
 // --- interactive setup (run in a real terminal) ---
-async function setup() {
-  console.log('— הגדרת מייל ל-Work Journal (Gmail) —');
-  console.log('דרוש App Password מחשבון Google (Account > Security > App passwords). הריצו ב-PowerShell/cmd.\n');
-  const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
-  const ask = (q, d) => new Promise((res) => rl.question(q + (d ? ` [${d}]` : '') + ': ', (a) => res((a || '').trim() || d || '')));
-  const to = await ask('כתובת לקבלת הסיכום');
-  if (!to) { console.error('חובה כתובת. בוטל.'); rl.close(); process.exit(1); }
-  const from = await ask('כתובת השולח (Gmail)', to);
-  const host = await ask('SMTP host', 'smtp.gmail.com');
-  const port = await ask('SMTP port', '587');
-  rl.close();
-
-  // hidden password prompt + DPAPI encrypt, in the same console
+// Every prompt runs inside ONE PowerShell invocation, on purpose:
+//  - prompts are in English, so they don't render reversed in the Windows console (Hebrew BiDi bug);
+//  - a single stdin reader avoids the Node-readline ↔ PowerShell-Read-Host race that hid the password
+//    prompt until an extra Enter. PowerShell collects the fields, encrypts the password (DPAPI), and
+//    hands the non-secret fields back to Node via a temp JSON file.
+function setup() {
+  if (process.platform !== 'win32') { console.error('Email setup is Windows-first (DPAPI).'); process.exit(1); }
+  console.log('Work Journal — email setup (Gmail).');
+  console.log('You need a Google App Password (Google Account > Security > App passwords).\n');
   fs.mkdirSync(ROOT, { recursive: true });
-  const ps = "$p=Read-Host -AsSecureString 'App Password (לא יוצג בהקלדה)'; if($p.Length -eq 0){ Write-Error 'empty'; exit 1 }; ConvertFrom-SecureString $p | Set-Content -NoNewline -Path $env:WL_CRED -Encoding ASCII";
-  const r = spawnSync('powershell', ['-NoProfile', '-Command', ps], { stdio: 'inherit', env: { ...process.env, WL_CRED: CRED } });
-  if (r.status !== 0 || !fs.existsSync(CRED)) { console.error('\nשמירת הסיסמה נכשלה. בוטל.'); process.exit(1); }
+  const CFG_TMP = path.join(ROOT, '.email-setup.json');
+  try { fs.unlinkSync(CFG_TMP); } catch { /* none */ }
+
+  const ps = [
+    "$ErrorActionPreference='Stop'",
+    "$to = Read-Host 'Email address to receive the summary'",
+    "if ([string]::IsNullOrWhiteSpace($to)) { Write-Error 'Address is required.'; exit 1 }",
+    "$from = Read-Host \"Sender Gmail address (press Enter to use $to)\"",
+    "if ([string]::IsNullOrWhiteSpace($from)) { $from = $to }",
+    "$smtp = Read-Host 'SMTP host (press Enter for smtp.gmail.com)'",
+    "if ([string]::IsNullOrWhiteSpace($smtp)) { $smtp = 'smtp.gmail.com' }",
+    "$port = Read-Host 'SMTP port (press Enter for 587)'",
+    "if ([string]::IsNullOrWhiteSpace($port)) { $port = '587' }",
+    "$pw = Read-Host -AsSecureString 'Gmail App Password (input is hidden)'",
+    "if ($pw.Length -eq 0) { Write-Error 'Password is empty.'; exit 1 }",
+    "ConvertFrom-SecureString $pw | Set-Content -NoNewline -Path $env:WL_CRED -Encoding ASCII",
+    "@{ to=$to; from=$from; smtpHost=$smtp; smtpPort=[int]$port } | ConvertTo-Json -Compress | Set-Content -NoNewline -Path $env:WL_CFG -Encoding UTF8",
+  ].join('; ');
+  const r = spawnSync('powershell', ['-NoProfile', '-Command', ps], { stdio: 'inherit', env: { ...process.env, WL_CRED: CRED, WL_CFG: CFG_TMP } });
+  if (r.status !== 0 || !fs.existsSync(CRED) || !fs.existsSync(CFG_TMP)) { console.error('\nSetup cancelled or failed.'); process.exit(1); }
+
+  let f;
+  try { f = JSON.parse(fs.readFileSync(CFG_TMP, 'utf8')); }
+  catch { console.error('\nSetup failed to read the entered fields.'); process.exit(1); }
+  finally { try { fs.unlinkSync(CFG_TMP); } catch { /* ignore */ } }
 
   const schedule = require('./worklog-schedule.js');
   const d = schedule.defaultConfig();
   const c = readConfig();
-  c.email = { ...d.email, ...(c.email || {}), enabled: true, provider: 'gmail', to, from, smtpHost: host, smtpPort: Number(port) };
+  c.email = { ...d.email, ...(c.email || {}), enabled: true, provider: 'gmail', to: f.to, from: f.from || f.to, smtpHost: f.smtpHost || 'smtp.gmail.com', smtpPort: Number(f.smtpPort) || 587 };
   c.weekly = { ...d.weekly, ...(c.weekly || {}) };
   writeConfig(c);
   // (re)register tasks so the daily email (20:30) + weekly recap start working immediately
   try { schedule.registerTasks({ node: process.execPath, summaryScript: path.join(__dirname, 'worklog-summary.js'), config: c }); } catch { /* non-fatal */ }
-  console.log('\n✅ נשמר (סיסמה מוצפנת DPAPI) והמשימות עודכנו. בדיקה:  node "' + __filename.replace(/\\/g, '/') + '" --test');
+  console.log('\nSaved (App Password DPAPI-encrypted) and tasks updated. Test:  node "' + __filename.replace(/\\/g, '/') + '" --test');
 }
 
 function test() {
-  if (!emailEnabled()) { console.error('מייל לא מוגדר. הריצו קודם --setup'); process.exit(1); }
+  if (!emailEnabled()) { console.error('Email not configured — run --setup first.'); process.exit(1); }
   const ok = sendSummary('בדיקת Work Journal ✅', 'אם קיבלת את המייל הזה — שליחת המייל מוגדרת ועובדת. 🎉');
-  console.log(ok ? 'נשלח — בדוק את תיבת הדואר.' : 'נכשל — בדוק כתובת/סיסמה/חיבור.');
+  console.log(ok ? 'Sent — check your inbox.' : 'Failed — check address / password / connection.');
 }
 
 module.exports = { sendSummary, emailEnabled };
@@ -111,6 +128,6 @@ if (require.main === module) {
   const a = process.argv.slice(2);
   if (a.includes('--setup')) setup();
   else if (a.includes('--test')) test();
-  else if (a.includes('--disable')) { const c = readConfig(); if (c.email) { c.email.enabled = false; writeConfig(c); } console.log('מייל כובה.'); }
+  else if (a.includes('--disable')) { const c = readConfig(); if (c.email) { c.email.enabled = false; writeConfig(c); } console.log('Email disabled.'); }
   else console.log('usage: worklog-email.js --setup | --test | --disable');
 }

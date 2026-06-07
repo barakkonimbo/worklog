@@ -43,6 +43,14 @@
 
 ## 🗓️ לוג כרונולוגי
 
+### 2026-06-07 — תיקון UX ב-installer setup (v0.7.5)
+**נעשה:**
+- **2 באגים שהמשתמש זיהה ב-`--setup`:** (1) prompts בעברית הופיעו **הפוכים** ב-Windows console (BiDi; "כתובת"→"תבותכ"); (2) prompt הסיסמה הופיע רק אחרי **Enter כפול** (race בין Node readline ל-PowerShell Read-Host).
+- **תיקון (`worklog-email.js`):** כל קלט ה-setup ב-**PowerShell יחיד** — prompts באנגלית (אין היפוך), קורא-stdin אחד (אין race); מצפין סיסמה DPAPI, מחזיר שדות דרך קובץ JSON זמני. גם הודעות-טרמינל ב-email+calendar (setup/test/disable) → אנגלית.
+- **נבדק:** node --check + PS parse-check (13 statements, prompts אנגלית מאומתים). D16, bump 0.7.5. ב-branch ייעודי למיזוג ידני.
+
+**הבא:** המשתמש בודק setup חי + ממזג ל-main; אח״כ קטלוג + install חי.
+
 ### 2026-06-05 — תיקון באג הבלוקים + פורמט מותאם-יעד (v0.7.4)
 **נעשה:**
 - **באג שהמשתמש זיהה:** היומן תפס רק ~8% מעבודת היום. אבחון על נתוני 04/06 (1 session נלכד, 13 רשומות → בלוק אחד): `computeBlocks` זרק כל רשומה שמחוץ למרווח-סשן.
