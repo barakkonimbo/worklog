@@ -129,7 +129,7 @@ function loopbackConsent(clientId, clientSecret) {
     });
     server.on('error', reject);
     server.listen(OAUTH_PORT, () => {
-      console.log('🔐 פותח דפדפן לאישור הרשאה ליומן… (אם לא נפתח, פתח ידנית:)');
+      console.log('🔐 Opening browser for calendar consent… (if it does not open, open this URL manually:)');
       console.log(authUrl + '\n');
       const cmd = process.platform === 'win32' ? `start "" "${authUrl}"`
         : process.platform === 'darwin' ? `open "${authUrl}"` : `xdg-open "${authUrl}"`;
@@ -269,11 +269,11 @@ async function handleSetup(argv) {
   const ei = argv.indexOf('--env');
   const envPath = ei >= 0 ? argv[ei + 1] : null;
   const { id, secret } = await resolveClientCreds(envPath);
-  if (!id || !secret) { console.error('חסר Client ID/Secret. בטל.'); process.exit(1); }
+  if (!id || !secret) { console.error('Missing Client ID / Secret. Cancelled.'); process.exit(1); }
 
   const refresh = await loopbackConsent(id, secret);
   if (!saveCred({ client_id: id, client_secret: secret, refresh_token: refresh })) {
-    console.error('שמירת ה-token (DPAPI) נכשלה.'); process.exit(1);
+    console.error('Saving the token (DPAPI) failed.'); process.exit(1);
   }
   const token = await getAccessToken();
   const calId = await findOrCreateCalendar(token);
@@ -283,25 +283,25 @@ async function handleSetup(argv) {
   const c = readConfig();
   c.calendar = { ...d.calendar, ...(c.calendar || {}), enabled: true, calendarId: calId };
   writeConfig(c);
-  console.log('\n✅ היומן חובר (token מוצפן DPAPI). יומן יעד: "Work Journal".');
-  console.log('בדיקה:  node "' + __filename.replace(/\\/g, '/') + '" --test');
+  console.log('\n✅ Calendar connected (token DPAPI-encrypted). Target calendar: "Work Journal".');
+  console.log('Test:  node "' + __filename.replace(/\\/g, '/') + '" --test');
 }
 
 async function handleTest() {
-  if (!calendarEnabled()) { console.error('היומן לא מוגדר. הריצו קודם --setup'); process.exit(1); }
+  if (!calendarEnabled()) { console.error('Calendar not configured — run --setup first.'); process.exit(1); }
   const cfg = readConfig();
   const token = await getAccessToken();
   const today = lib.dateKey(lib.now());
   const start = new Date(); const end = new Date(start.getTime() + 30 * 60000);
   const ev = await createEvent(token, cfg.calendar.calendarId, {
-    summary: '🧪 Work Journal — בדיקה',
+    summary: '🧪 Work Journal — test',
     start: { dateTime: start.toISOString() }, end: { dateTime: end.toISOString() },
     extendedProperties: { private: { worklog: today } },
   });
-  console.log('✅ אירוע בדיקה נוצר ביומן "Work Journal". מוחק בעוד 4 שניות…');
+  console.log('✅ Test event created in the "Work Journal" calendar. Deleting in 4 seconds…');
   setTimeout(async () => {
-    try { await deleteEvent(token, cfg.calendar.calendarId, ev.id); console.log('✅ אירוע הבדיקה נמחק. הכול עובד.'); }
-    catch (e) { console.error('מחיקה נכשלה (אפשר למחוק ידנית):', e.message); }
+    try { await deleteEvent(token, cfg.calendar.calendarId, ev.id); console.log('✅ Test event deleted. Everything works.'); }
+    catch (e) { console.error('Delete failed (you can remove it manually):', e.message); }
   }, 4000);
 }
 
@@ -319,7 +319,7 @@ if (require.main === module) {
   const run = argv.includes('--setup') ? handleSetup(argv)
     : argv.includes('--test') ? handleTest()
     : argv.includes('--sync') ? handleSync(argv)
-    : argv.includes('--disable') ? (() => { const c = readConfig(); if (c.calendar) { c.calendar.enabled = false; writeConfig(c); } console.log('יומן כובה.'); })()
+    : argv.includes('--disable') ? (() => { const c = readConfig(); if (c.calendar) { c.calendar.enabled = false; writeConfig(c); } console.log('Calendar disabled.'); })()
     : Promise.resolve(console.log('usage: worklog-calendar.js --setup [--env <path>] | --test | --sync [YYYY-MM-DD] | --disable'));
   Promise.resolve(run).catch((e) => { console.error('[worklog-calendar] error:', e.message); process.exit(1); });
 }

@@ -1,6 +1,6 @@
 # מדריך — שליחה ובדיקה אצל חבר צוות (Windows)
 
-מדריך תפעולי: מה לשלוח ואיך להדריך. גרסה נוכחית: **0.7.4**.
+מדריך תפעולי: מה לשלוח ואיך להדריך. גרסה נוכחית: **0.7.5**.
 
 ---
 
@@ -47,7 +47,7 @@ C:\Users\sarit\youleap\someSkills\work-journal\dist\work-journal-setup.zip
    - *Workspace:* אם אין האופציה — האדמין חוסם; SMTP גנרי כחלופה.
 2. ב-PowerShell/cmd (לא דרך Claude — הסיסמה מוסתרת):
    `node "%USERPROFILE%\.claude\hooks\worklog-email.js" --setup`
-   רצף: כתובת → שולח (Enter=אותה) → host (Enter=smtp.gmail.com) → port (Enter=587) → App Password (מודבק מוסתר).
+   רצף (ה-prompts באנגלית): כתובת → שולח (Enter=אותה) → host (Enter=smtp.gmail.com) → port (Enter=587) → App Password (מודבק מוסתר).
 3. בדיקה: `node "%USERPROFILE%\.claude\hooks\worklog-email.js" --test` → מייל אמור להגיע.
 ברירת מחדל: יומי 20:30 א׳–ה׳, שבועי ראשון 08:00. שינוי: בקש מ-Claude ("תשלח ב-21:00") או `worklog-config.js`.
 
