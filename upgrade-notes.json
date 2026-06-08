@@ -1,0 +1,7 @@
+{
+  "_comment": "Per-version upgrade notes consumed by worklog-update.js. Keyed by version. Each entry: { summary: short human line, action: null | { required: bool, text: string } }. Set action ONLY when the user must/should do something (rare) — e.g. a credential-format change. A normal update needs no action (action: null). Keep summary one line.",
+  "0.8.0": {
+    "summary": "פקודת /worklog update (עדכון מהתיקייה המקומית עם זיהוי-תוכן + הסבר מה השתנה + סימון פעולות) והפרדת weekly/calendar בטקסט ה-help",
+    "action": null
+  }
+}

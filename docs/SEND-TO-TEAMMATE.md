@@ -1,6 +1,6 @@
 # מדריך — שליחה ובדיקה אצל חבר צוות (Windows)
 
-מדריך תפעולי: מה לשלוח ואיך להדריך. גרסה נוכחית: **0.7.6**.
+מדריך תפעולי: מה לשלוח ואיך להדריך. גרסה נוכחית: **0.8.0**.
 
 ---
 
@@ -11,8 +11,11 @@ C:\Users\sarit\youleap\someSkills\work-journal\dist\work-journal-setup.zip
 ```
 (אם שינית קוד — הרץ `node build.js` לרענון.) בתוך ה-zip יש `INSTALL.md` עם כל ההוראות, כגיבוי.
 
-> **עדכון גרסה:** שלח zip חדש; החבר מחלץ **מעל** `~/.claude/skills/work-journal-setup/` ומריץ שוב
-> `/work-journal-setup`. אידמפוטנטי — יראה `updating from X`, לא משכפל, שומר hooks אחרים.
+> **עדכון גרסה (0.8.0+):** שלח zip חדש; החבר מחלץ **מעל** `~/.claude/skills/work-journal-setup/` ואז
+> מריץ **`/worklog update`** — בודק לפי תוכן (לא רק מספר גרסה), מסביר מה השתנה, ומסמן אם נדרשת
+> התייחסות. עדכון רגיל **לא** מבקש סיסמאות. (חלופה זהה: `/work-journal-setup` שוב — אידמפוטנטי,
+> `updating from X`, לא משכפל, שומר hooks אחרים.) הערה: מי שעדיין על גרסה לפני 0.8.0 — העדכון הראשון
+> דרך `/work-journal-setup`, ומשם והלאה `/worklog update`.
 
 ---
 
@@ -26,14 +29,14 @@ C:\Users\sarit\youleap\someSkills\work-journal\dist\work-journal-setup.zip
 > 2. ב-Claude Code: `/work-journal-setup` → אשר.
 > 3. **פתח סשן חדש** (חשוב — אז ה-hooks נטענים).
 >
-> מעכשיו: התראת סיכום ב-18:00; `/worklog show` ליומן · `/worklog status` תמונת-מצב · `/worklog summary` סיכום מיידי · `/worklog send` שליחה-עכשיו · `/worklog help` כל הפקודות.
+> מעכשיו: התראת סיכום ב-18:00; `/worklog show` ליומן · `/worklog status` תמונת-מצב · `/worklog summary` סיכום מיידי · `/worklog send` שליחה-עכשיו · `/worklog update` עדכון · `/worklog help` כל הפקודות (גם מיפוי לטרמינל).
 > **רוצה גם מייל בסוף יום?** ספר לי ואדריך אותך בהפעלה (אופציונלי, כבוי כברירת מחדל).
 > בעיות? דבר איתי.
 
 ---
 
 ## חלק 3 — איך לוודא שעבד (אצל החבר)
-1. **hooks הותקנו:** `Get-ChildItem "$env:USERPROFILE\.claude\hooks\worklog-*.js"` → 13 קבצים.
+1. **hooks הותקנו:** `Get-ChildItem "$env:USERPROFILE\.claude\hooks\worklog*.js"` → 15 קבצים (כולל ה-dispatcher `worklog.js` ו-`worklog-update.js`).
 2. **המשימה נרשמה:** `Get-ScheduledTask -TaskName "WorkJournal-*"` → לפחות `WorkJournal-Notify` (Ready).
    (אם הפעיל מייל — גם `WorkJournal-DailyEmail` ו-`WorkJournal-Weekly`.)
 3. **בדיקה חיה:** ב**סשן חדש** → `/worklog "בדיקת התקנה"` → `/worklog show` → הרשומה מופיעה.

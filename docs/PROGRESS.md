@@ -24,6 +24,9 @@
 | ממשק on-demand (`send`/`status`/`help`/שפת-פלט) | ✅ נבנה ואומת — 18/18 בדיקות מבודדות (v0.7.2) |
 | שכבת פעילות (UserPromptSubmit → בלוקים מדויקים) | ✅ נבנה ואומת (v0.7.6) — חותמות זמן+פרויקט, פיצול 30ד׳ / זנב 10ד׳ |
 | Catch-up מייל + דילוג-סיכום | ✅ נבנה ואומת (v0.7.6) — מייל שפוספס נשלח למחרת ליום הנכון; אין סיכום-מחדש ללא שינוי |
+| עדכון מקומי (`/worklog update`) | ✅ נבנה ואומת (v0.8.0) — זיהוי לפי content-manifest (לא רק גרסה), הסבר מ-`upgrade-notes.json`, סימון פעולות; creds לא נוגעים |
+| Dispatcher לטרמינל (`worklog.js`) | ✅ נבנה ואומת (v0.8.0) — פקודה אחת לכל הפעלים; `help` מציג מיפוי צ'אט↔טרמינל |
+| הקשחת פרסר-רשומות (סובלני ל-reformat) | ✅ נבנה ואומת (v0.8.0) — matcher משותף `[-*]`+`\\[` ב-5 אתרים; מונע ספירה-0 / דילוג-יום אחרי format-on-save |
 | תמיכה ב-macOS/Linux (תזמון) | ⏳ לא התחיל |
 
 ---
@@ -44,6 +47,15 @@
 ---
 
 ## 🗓️ לוג כרונולוגי
+
+### 2026-06-08 — עדכון מקומי (`/worklog update`) + dispatcher לטרמינל + הקשחת פרסר (v0.8.0)
+**נעשה (3 שינויים, bump אחד):**
+- **`/worklog update` — עדכון מהתיקייה המקומית:** סקריפט חדש `worklog-update.js` משווה **content-manifest** (`sha256` על `src/` + `VERSION`, ב-`worklog-lib.computeManifest`) מול ה-manifest שנחתם בהתקנה — אז גם **hotfix באותה גרסה** או תיקון-יד נתפסים, **לא רק bump**. אם שונה: מדפיס מה השתנה (מ-`upgrade-notes.json`, פר-גרסה) + סעיף "דורש תשומת-לב" (required/optional), ואז מריץ את `install.js` האידמפוטנטי. מסרב downgrade. דגלים: `--check` (dry-run), `--source DIR`. **מודל לוקלי (v1):** המקור = תיקיית ה-setup שהמשתמש ריענן (zip/pull); אין הנחת רשת/auth. **creds לא נוגעים** — `.email-cred`/`.calendar-cred` (DPAPI) מחוץ ל-`src` ומחוץ לתחום של install → עדכון רגיל לא מבקש כלום. `install.js` חותם עכשיו `.installed-manifest`.
+- **Dispatcher `worklog.js` (קיצור CLI):** פקודה אחת `worklog.js <verb>` מנתבת ל-סקריפטים הקיימים (`status`/`show`/`send`/`summary`/`week`/`log`/`update`/הגדרות) — במקום לזכור 5 שמות. `help` שוכתב ל**מיפוי צ'אט↔טרמינל** copy-paste. (Tier 0+1 מתוך דיון הקיצור; Tier 2 = shim ל-`$PROFILE` — נדחה כ-opt-in עתידי.) `uninstall` הורחב ל-`worklog*.js` כדי לתפוס גם את ה-dispatcher.
+- **הקשחת פרסר-רשומות (fail-safe):** matcher משותף ויחיד ב-`worklog-lib` (`parseEntryLine`/`hasEntryLine`/`entryRe`) שמקבל גם `*` וגם `\\[` — כי format-on-save/מעצב-markdown יכול לשכתב `- [x]` → `* \\[x]` בקובץ היומי. הוחל ב-**5 אתרים** (config-status, calendar-parseEntries, summary-fallback, summary-hasEntries, session-end). בלי זה reformat יחיד מאפס את הספירה ויכול לגרום ל-`hasEntries()` לדלג על יום שלם. **רקע:** התגלה חי — קובץ 2026-06-08 פורמט-מחדש ל-`* \\[...]`, status הציג 1 במקום 9; הסיכום ה-AI עצמו תקין (גולמי→claude), אך הפרסר היה שביר.
+- **נבדק:** update 5/5 מסלולים (שדרוג+notes / החלה אמיתית→0.8.0 / "עדכני" / שינוי-תוכן-באותה-גרסה / אין-מקור) · dispatcher (help/show/status/update/לא-מוכר) · פרסר 5 קלטים (dash/asterisk+escaped/רווחים+שני-escaped/לא-רשומות) · **status חי חזר ל-9 רשומות**. הותקן חי 0.8.0 (15 hooks). D18–D20.
+
+**הבא:** build + push לשני הריפו + מיזוג (המשתמש).
 
 ### 2026-06-08 — שכבת פעילות לבלוקים מדויקים + catch-up מייל + דילוג-סיכום (v0.7.6)
 **נעשה (שתי משימות אוחדו ל-bump אחד):**

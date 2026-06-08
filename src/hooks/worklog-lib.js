@@ -10,6 +10,7 @@
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
+const crypto = require('crypto');
 
 const ROOT = path.join(os.homedir(), '.claude', 'work-journal');
 const SESSIONS = path.join(ROOT, '.sessions');
@@ -83,6 +84,60 @@ function readIf(f) {
   try { return fs.readFileSync(f, 'utf8'); } catch { return ''; }
 }
 
+// ---- entry parsing -------------------------------------------------------
+// One canonical, TOLERANT matcher for a logged entry line, shared by every parser (status, summary,
+// calendar, session-end) so they can't drift. appendEntry writes `- HH:MM [project] message`, but a
+// markdown formatter / editor-on-save may rewrite an existing daily file to `* HH:MM \[project] message`
+// (asterisk bullet, backslash-escaped bracket) — so we accept `-` OR `*` bullets, optional leading
+// whitespace, flexible inner spacing, and an optional backslash before each bracket. Without this, a
+// single reformat silently zeroes the entry count and can make hasEntries() skip a whole day.
+const ENTRY_RE_SRC = '^\\s*[-*]\\s+(\\d{2}:\\d{2})\\s+\\\\?\\[([^\\]]+?)\\\\?\\]\\s+(.+)$';
+const entryRe = (flags) => new RegExp(ENTRY_RE_SRC, flags);
+// Parse a single line → { time, project, message } or null.
+function parseEntryLine(line) {
+  const m = entryRe('').exec(String(line));
+  return m ? { time: m[1], project: m[2], message: m[3] } : null;
+}
+// Does this text contain at least one entry line?
+function hasEntryLine(text) { return entryRe('m').test(String(text || '')); }
+
+// ---- update detection ----------------------------------------------------
+// Content manifest of an artifact source folder, used to detect "is there something new to install"
+// beyond a version bump (catches a same-version hotfix or a hand-patch). Scoped to exactly what the
+// installer deploys + the version stamp: the `src/` tree and `VERSION`. Both the dev repo root and a
+// built `work-journal-setup/` bundle have these at the same relative paths, so the hash is identical
+// across machines and distribution forms when (and only when) the installable content matches.
+// NOTE: deliberately excludes install.js/docs/dist — a release always bumps VERSION (which IS hashed),
+// so any shipped change is reflected; only an unversioned installer-only edit would slip past, which
+// never happens in distribution.
+function sha256(buf) { return crypto.createHash('sha256').update(buf).digest('hex'); }
+
+function walkFiles(dir) {
+  const out = [];
+  let entries = [];
+  try { entries = fs.readdirSync(dir, { withFileTypes: true }); } catch { return out; }
+  for (const e of entries) {
+    const p = path.join(dir, e.name);
+    if (e.isDirectory()) out.push(...walkFiles(p));
+    else if (e.isFile()) out.push(p);
+  }
+  return out;
+}
+
+// srcRoot = the folder that contains `src/` and `VERSION` (dev repo root, or a setup bundle).
+function computeManifest(srcRoot) {
+  const items = [];
+  const srcDir = path.join(srcRoot, 'src');
+  for (const f of walkFiles(srcDir)) {
+    const rel = path.relative(srcRoot, f).replace(/\\/g, '/');
+    items.push(rel + '\0' + sha256(fs.readFileSync(f)));
+  }
+  const vf = path.join(srcRoot, 'VERSION');
+  if (fs.existsSync(vf)) items.push('VERSION\0' + sha256(fs.readFileSync(vf)));
+  items.sort();
+  return sha256(items.join('\n'));
+}
+
 // Append one per-prompt activity stamp to today's activity file. Tiny + append-only + content-free
 // (project + time only). Created with the journal dirs if missing. Used by the UserPromptSubmit hook.
 function appendActivity({ project }) {
@@ -98,4 +153,6 @@ module.exports = {
   dateKey, timeKey, hebDow,
   dailyFile, summaryFile, weeklyFile, isoWeekParts, activityFile,
   projectFromCwd, appendEntry, appendActivity, readIf,
+  sha256, computeManifest,
+  entryRe, parseEntryLine, hasEntryLine,
 };

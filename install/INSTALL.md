@@ -28,11 +28,14 @@
 - ממזגת בלוק ל-`~/.claude/CLAUDE.md` ורשומות hooks ל-`~/.claude/settings.json` (**מגבה ל-`.bak`, לא דורסת קיים**).
 - רושמת משימה מתוזמנת אחת להתראת 18:00 (ועוד משימות מייל רק אם תפעיל מייל).
 - בשדרוג: **משלימה מפתחות הגדרה חדשים** ל-`config.json` קיים (כמו פרמטרי בלוקי-היומן) בלי לדרוס ערכים שלך (גיבוי `config.json.bak`).
+- חותמת `.installed-version` + **`.installed-manifest`** (sha256 של המקור) — כדי ש-`/worklog update` יזהה אם יש עדכון לפי תוכן, לא רק לפי מספר גרסה.
+- **לא נוגעת ב-credentials** (`.email-cred`/`.calendar-cred`, מוצפני DPAPI) — שדרוג שומר אותם.
 - **אידמפוטנטית** — בטוח להריץ שוב (גם לעדכון גרסה).
 
 ## שימוש אחרי ההתקנה
 - **אוטומטי:** נטען בכל סשן; קלוד מתעד בנקודות מפתח; התראת 18:00.
-- **ידני:** `/worklog <טקסט>` לרשום · `/worklog show` · `/worklog status` · `/worklog summary` · `/worklog send` (שלח עכשיו) · `/worklog help` (כל הפקודות).
+- **ידני:** `/worklog <טקסט>` לרשום · `/worklog show` · `/worklog status` · `/worklog summary` · `/worklog send` (שלח עכשיו) · `/worklog update` (עדכון) · `/worklog help` (כל הפקודות).
+- **בטרמינל:** פקודה אחת לכל הפעלים — `node "%USERPROFILE%\.claude\hooks\worklog.js" status` (וגם `show`/`send`/`summary`/`update`/`log "..."`/`email off`...). `worklog.js help` מציג מיפוי צ'אט↔טרמינל.
 
 ## מייל בסוף יום (אופציונלי — כבוי כברירת מחדל)
 מי שרוצה מייל מפעיל פעם אחת:

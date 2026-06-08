@@ -105,7 +105,17 @@
 - קורא/ממזג/כותב `config.json`. CLI: `email on/off`, `email.time`, `email.days` (תומך `Sun-Thu`),
   `weekly.day/time/off`, `calendar on/off`, `language <free-form>`. **כל שינוי קורא ל-`registerTasks` → רישום מחדש** (אין drift הגדרות↔תזמון).
 - `status` — תצוגת-על (read-only): פעילות היום (רשומות+פרויקטים, האם הסיכום נוצר) + יעדים (on/off + מצב cred) + שפה + `describe()`.
-- `help` — מדפיס את כל הפקודות (סקיל `/worklog` + ה-CLI הישיר). נקרא מ-`/worklog help`.
+- `help` — מדפיס **מיפוי צ'אט↔טרמינל** (כל פעולה: שורת `/worklog` + שורת `worklog.js` copy-paste). נקרא מ-`/worklog help`.
+- **פרסור רשומות** עבר ל-`lib.parseEntryLine` המשותף (v0.8.0) — `status` סובלני כעת ל-reformat של ה-markdown.
+
+### `worklog-update.js` — עדכון מקומי (v0.8.0)
+- מאתר את תיקיית ה-setup (`<claude>/skills/work-journal-setup/`, או `--source DIR`). משווה **content-manifest** (`lib.computeManifest` = `sha256` על `src/`+`VERSION`) מול `.installed-manifest` שנחתם ע"י `install.js` → תופס גם שינוי-תוכן באותה גרסה, לא רק bump.
+- זהה → "עדכני". מקור ישן יותר → מסרב downgrade. אחרת: מדפיס מה השתנה (מ-`upgrade-notes.json`, גרסאות `(installed, target]`) + סעיף "דורש תשומת-לב" (required/optional), ואז `spawnSync(install.js)` (אידמפוטנטי). דגלים: `--check` (dry-run), `--source`.
+- **creds לא נוגעים:** `.email-cred`/`.calendar-cred` (DPAPI) מחוץ ל-`src` ומחוץ לתחום install → עדכון רגיל לא מבקש דבר.
+
+### `worklog.js` — dispatcher לטרמינל (v0.8.0)
+- פקודה אחת `worklog.js <verb>` → `spawnSync` (stdio inherit) ל-סקריפט המתאים. פעלים = `/worklog` בצ'אט: `show` (מדפיס יומן היום), `status`/`help`/הגדרות → `worklog-config.js`; `summary`/`week`/`send [email|calendar]` → `worklog-summary.js`; `log "..."` → `worklog-log.js`; `update` → `worklog-update.js`.
+- **תוספת נוחות לבני-אדם בלבד** — ה-skill וה-tasks ממשיכים לקרוא ישירות לסקריפטים הספציפיים. `uninstall` תופס אותו דרך תבנית `worklog*.js`.
 
 ### `worklog-schedule.js` — רישום משימות מ-config (משותף ל-install/config/email/calendar)
 - `defaultConfig()` (כולל `language: 'עברית'`), `parseDays()`, `registerTasks(...)`, `describe()` (כולל שורת שפה).

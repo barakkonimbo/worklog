@@ -39,7 +39,7 @@ function loggedThisSession(m) {
   if (m.startDate !== lib.dateKey(d)) return true; // session spanned days -> skip fallback
   const content = lib.readIf(lib.dailyFile(d));
   if (!content) return false;
-  const re = /^- (\d{2}:\d{2}) \[/gm;
+  const re = lib.entryRe('gm');
   let mm, max = null;
   while ((mm = re.exec(content))) { if (max === null || mm[1] > max) max = mm[1]; }
   if (max === null) return false;

@@ -68,9 +68,11 @@ Map the user's intent to `worklog-config.js` (each change re-registers the tasks
 `weekly.day Sunday` · `weekly.time 08:00` · `language English` (summary output language, default עברית).
 Run it with no args to show current settings, or `status` for the unified view.
 
-Day-to-day control is the `/worklog` skill: `help` (full command list) / `show` / `status` / `summary` /
-`week`, and `send` — regenerate today's summary and deliver it now to every enabled target (optionally
-`send email` / `send calendar`).
+Day-to-day control is the `/worklog` skill: `help` (full command list, with a copy-paste chat↔terminal map) /
+`show` / `status` / `summary` / `week` / `send` (regenerate + deliver now to every enabled target, optionally
+`send email` / `send calendar`) / `update` (update from the locally-refreshed setup folder — detects by content,
+explains what changed, flags any required action; never touches credentials). Terminal users can run any of these
+via one dispatcher: `node "<HOOKS>/worklog.js" <verb>`.
 
 ## Uninstall (only when asked)
 ```bash
@@ -80,7 +82,8 @@ node "$HOME/.claude/skills/work-journal-setup/uninstall.js" --purge    # also de
 (Windows: use `$env:USERPROFILE\.claude\...`.)
 
 ## What gets installed
-- hooks → `~/.claude/hooks/worklog-*.js` (SessionStart injects the journal; SessionEnd is the safety net)
+- hooks → `~/.claude/hooks/worklog*.js` (SessionStart injects the journal; SessionEnd is the safety net;
+  plus the `worklog.js` terminal dispatcher and `worklog-update.js`)
 - skill → `~/.claude/skills/worklog/` (the `/worklog` manual control)
 - a short block merged into `~/.claude/CLAUDE.md`
 - SessionStart + SessionEnd entries merged into `~/.claude/settings.json` (existing hooks preserved; backed up)
