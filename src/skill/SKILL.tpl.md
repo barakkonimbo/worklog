@@ -1,6 +1,6 @@
 ---
 name: worklog
-description: Manual control of the global work-journal (יומן עבודה). Use when the user wants to log an entry by hand, see today's journal or status, generate the daily/weekly summary, send it now to email/calendar on demand, or change settings like the summary language. Triggers on "/worklog", "תרשום ביומן", "log this to the journal", "what did I do today", "show my work journal", "worklog status", "מצב היומן", "worklog help", "what can the work journal do", "אילו פקודות יש ביומן", "send the summary now", "שלח עכשיו", "generate today's summary now", "סיכום יום עכשיו", "סיכום שבועי", "change summary language", "שנה שפת סיכום". The automatic logging is handled by hooks; this skill is for explicit, on-demand actions.
+description: Manual control of the global work-journal (יומן עבודה). Use when the user wants to log an entry by hand, see today's journal or status, generate the daily/weekly summary, send it now to email/calendar on demand, or change settings like the summary language. Triggers on "/worklog", "תרשום ביומן", "log this to the journal", "what did I do today", "show my work journal", "worklog status", "מצב היומן", "worklog help", "what can the work journal do", "אילו פקודות יש ביומן", "send the summary now", "שלח עכשיו", "generate today's summary now", "סיכום יום עכשיו", "סיכום שבועי", "change summary language", "שנה שפת סיכום", "update the work journal", "עדכן את היומן", "worklog update", "is there a new version". The automatic logging is handled by hooks; this skill is for explicit, on-demand actions.
 ---
 
 # Work Journal — manual control
@@ -79,7 +79,24 @@ to run it in their OWN terminal (PowerShell/cmd) — not via this skill:
   close (a continuous mirror) and at the 20:30 run (which also refreshes the summary event).
   (Full step-by-step in the project's INSTALL.md.)
 
+## 9. Update the system (`/worklog update`)
+For "update the work journal" / "עדכן את היומן" / "is there a new version". Updates from the locally
+refreshed setup folder (`<CLAUDE_CONFIG_DIR or ~/.claude>/skills/work-journal-setup/`) — so first remind
+the user to refresh that folder (extract the new zip / pull the catalog) if they haven't.
+`"<NODE>" "<HOOKS>/worklog-update.js"`
+- It compares a content manifest (not just the version number), so a same-version hotfix is caught too.
+- If nothing differs it prints "עדכני — אין מה לעדכן" — relay that, done.
+- If it updates, it prints **what changed** and a "⚠️ דורש תשומת-לב" section. **Surface those items.** If any is
+  marked **חובה (required)** and needs hidden input (e.g. re-running `worklog-email.js --setup` /
+  `worklog-calendar.js --setup`), guide the user to run it in their OWN terminal — do NOT run setup yourself.
+- A normal update touches NO credentials and asks for nothing; reassure the user of that if they worry.
+- Preview without applying: add `--check` (dry run). Override the source folder: `--source <path>`.
+
 ## Notes
+- Terminal users can drive everything via one dispatcher instead of remembering each script:
+  `node "<HOOKS>/worklog.js" <verb>` — e.g. `status`, `show`, `send`, `update`, `summary`, `week`,
+  `log "text"`, or any settings verb (`email off`, `language English`). `worklog help` prints the full
+  chat↔terminal map. (This skill itself calls the specific scripts directly; the dispatcher is for humans.)
 - The summary generator prevents recursion (`WORKLOG_DISABLE=1`), so running it from a session is safe.
 - For a specific past date: append `--date YYYY-MM-DD` to the summary command.
 - `send` = `--daily --deliver`; the scheduled 20:30 run uses `--daily --email` (a back-compat alias of `--deliver`).

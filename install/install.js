@@ -13,7 +13,7 @@
  *   4. merges UserPromptSubmit+SessionStart+SessionEnd -> <claude>/settings.json (idempotent, backed up)
  *   4b. backfills new default keys into an existing config.json (upgrade; preserves user values)
  *   5. registers scheduled summaries    -> Windows Task Scheduler (per config: 18:00 notify / 20:30 email+calendar / Sun weekly)
- *   6. ensures the journal data dir exists
+ *   6. ensures the journal data dir + stamps .installed-version & .installed-manifest (for /worklog update)
  *
  * Paths are resolved locally (os.homedir, process.execPath) so it works on any machine.
  * Honors CLAUDE_CONFIG_DIR if set.
@@ -125,9 +125,13 @@ function main() {
   if (process.platform === 'win32') registerWindowsTasks();
   else log('scheduling: ' + process.platform + ' not yet supported — add cron/launchd manually (see docs/DECISIONS.md D4).');
 
-  // 6. journal data dir + version stamp
+  // 6. journal data dir + version stamp + content manifest (for `/worklog update` change-detection)
   fs.mkdirSync(path.join(JOURNAL_DIR, '.sessions'), { recursive: true });
   fs.writeFileSync(path.join(JOURNAL_DIR, '.installed-version'), VERSION + '\n', 'utf8');
+  try {
+    const lib = require(path.join(SRC, 'hooks', 'worklog-lib.js'));
+    fs.writeFileSync(path.join(JOURNAL_DIR, '.installed-manifest'), lib.computeManifest(path.dirname(SRC)) + '\n', 'utf8');
+  } catch { /* non-fatal: update falls back to version comparison */ }
   log('journal: ensured ' + fwd(JOURNAL_DIR) + '  (version ' + VERSION + ')');
 
   console.log('\nDone ✅  Hooks activate on your NEXT Claude Code session.');

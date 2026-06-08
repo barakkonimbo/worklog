@@ -108,6 +108,25 @@ loopback, refresh token **מוצפן DPAPI** (כמו D11/D6). (ד) **טריגר 
 - **הבהרה (לא באג):** ה-30/10 אינם שיקול-דעת של קלוד — קלוד לא מעורב בכלל. ה-hook רק חותם; `computeBlocks` (node טהור) מיישם את הפיצול/זנב, ו-`worklog-calendar.js` נופל ל-`|| 30` / `!= null ? : 10` גם כש-config קיים בלי המפתחות → הבלוקים תקינים מיד. **אבל** לצורך שקיפות וכוונון, ה-installer **משלים (backfill)** את מפתחות ברירת-המחדל החדשים לתוך `config.json` קיים בשדרוג — מיזוג ברירות-מחדל **מתחת** לערכי המשתמש (המשתמש מנצח בכל התנגשות; רק מפתחות חסרים נוספים), עם גיבוי `config.json.bak`, אידמפוטנטי. כך כל מי שמשדרג מקבל את המפתחות גלויים וניתנים-לעריכה.
 **השלכה:** היומן משקף את רצף העבודה במדויק בלי להציף את הסיכום; מייל לא הולך לאיבוד כשהמכונה כבויה; אפס טוקנים כשאין שינוי. **15/15 בדיקות** (יחידה לבלוקים: tail/split@30/clamp/notes/fallback/legacy; e2e למייל ב-subprocess עם fake-claude: today/reuse/catch-up→אתמול/nothing-new/manual-תמיד-today; + hook ידני: stdout ריק/חותמת-ללא-תוכן/WORKLOG_DISABLE; + אינטגרציה מקצה-לקצה). hook #13. `activityGapMinutes`/`tailMinutes` ניתנים-לכוונון ב-config.
 
+## D18 — `/worklog update` במודל לוקלי + זיהוי לפי content-manifest
+**הקשר:** חבר צוות על גרסה ישנה רוצה לעדכן מהר — שהמערכת **תבדוק אם יש עדכון (לא רק לפי מספר גרסה)**, תעדכן, תסביר מה השתנה, ותסמן אם נדרשת התייחסות שלו.
+**הנמקה:**
+- **מודל לוקלי (v1):** המקור = תיקיית ה-setup ב-`<claude>/skills/work-journal-setup/` שהמשתמש מרענן בעצמו (zip חדש / pull לקטלוג). נשקלו גם git-pull מהקטלוג ו-HTTPS מרוחק — נדחו ל-v1 כי שני הריפו **פרטיים** ו-auth משתנה בין חברי צוות; הלוקלי עובד לכולם, אפס הנחות רשת. ה-manifest+notes זהים בפורמט אם נוסיף מקור מרוחק בעתיד — אין re-work.
+- **זיהוי לפי תוכן, לא רק גרסה:** `worklog-lib.computeManifest(srcRoot)` = `sha256` על עץ `src/` + `VERSION` (אותם נתיבים יחסיים בריפו-הפיתוח ובבandle → hash זהה). `install.js` חותם `.installed-manifest`; `update` משווה — אז גם **hotfix באותה גרסה / תיקון-יד** נתפס. (חלון-עיוור יחיד: עריכת installer לא-מתוייגת — לא קורה בהפצה, כי כל release מבמפ VERSION שנכלל ב-hash.)
+- **הסבר + פעולות:** `upgrade-notes.json` (פר-גרסה: `{summary, action}`). update אוסף רשומות `(installed, target]`, מדפיס summaries, ומסמן `action` (required/optional). מכיוון שאנחנו מצהירים פר-גרסה — ההסבר/הסימון **אמינים, לא ניחוש**.
+- **creds לא נוגעים — נקודת-עיצוב מרכזית:** דאגת המשתמש הייתה "כל update יבקש סיסמה?". לא: `.email-cred`/`.calendar-cred` (DPAPI) חיים בתיקיית הנתונים, **מחוץ ל-`src` ומחוץ לתחום של `install.js`** → עדכון רגיל לא נוגע בהם ולא מבקש כלום. פעולת-קלט היא חריג נדיר שמוצהר ב-`upgrade-notes.action.required`, וגם אז אין "סיסמה לזכור" (מייל = App Password חדש; יומן = אישור-דפדפן).
+**השלכה:** `node worklog-update.js [--check] [--source DIR]` + `/worklog update`. צ'יקן-אנד-אג: העדכון הראשון של מי-שעל-גרסה-ישנה עדיין ידני (הפקודה נוחתת *עם* הגרסה הזו). 5/5 מסלולים נבדקו.
+
+## D19 — Dispatcher יחיד `worklog.js` לקיצור פקודות הטרמינל
+**הקשר:** פקודות הטרמינל ארוכות ומפוזרות על 5 סקריפטים (`worklog-config.js` / `worklog-summary.js` / ...). המשתמש ביקש דרך קצרה יותר, או לפחות ש-`help` יציג מיפוי copy-paste.
+**הנמקה:** `worklog.js <verb>` מנתב (spawnSync, stdio inherit) ל-סקריפטים הקיימים — פעלים זהים ל-`/worklog` בצ'אט (`status`/`show`/`send`/`summary`/`week`/`log`/`update` + פעלי-הגדרות pass-through). הסקריפטים נשארים עצמאיים (גם ה-skill וה-tasks ממשיכים לקרוא להם ישירות) — ה-dispatcher הוא **תוספת נוחות לבני-אדם בלבד**. `help` שוכתב למיפוי **צ'אט↔טרמינל** (כל שורת-טרמינל copy-paste דרך `worklog.js`). **טווח (מתוך דיון):** מומשו Tier 0 (מיפוי) + Tier 1 (dispatcher); Tier 2 (פונקציית `$PROFILE` ל-`worklog status` בלי `node "..."`) נדחה כ-opt-in עתידי כדי לא לגעת ב-profile של אף אחד אוטומטית.
+**השלכה:** `uninstall` הורחב מ-`worklog-*.js` ל-`worklog*.js` כדי לתפוס את ה-dispatcher (אחרת היה נשאר יתום).
+
+## D20 — פרסר-רשומות סובלני (עמיד ל-reformat של markdown)
+**הקשר:** התגלה חי — קובץ היומי 2026-06-08 שוכתב ע"י מעצב-markdown/format-on-save מ-`- HH:MM [project]` ל-`* HH:MM \[project]` (כוכבית + סוגר-בריחה). `status` הציג 1 רשומה במקום 9.
+**הנמקה:** ה-regex הקשיח `^- HH:MM \[…\]` חי ב-**5 אתרים** (status, calendar-parseEntries, summary-fallback, **`hasEntries()`**, session-end). זו לא בעיה קוסמטית: `hasEntries()` שולט אם הסיכום/מייל/יומן בכלל נשלחים — reformat בסדר מסוים היה יכול לגרום לדילוג על יום שלם. הפתרון: matcher **משותף ויחיד** ב-`worklog-lib` (`parseEntryLine`/`hasEntryLine`/`entryRe`) שמקבל `-` או `*`, רווחים גמישים, ו-`\` אופציונלי לפני כל סוגר. כל 5 האתרים עברו להשתמש בו (אפס drift). **הסיכום ה-AI עצמו לא היה בסכנה** — הוא נבנה מהטקסט הגולמי שמועבר ל-claude, שקורא כל markdown; הסיכון היה בפרסרים של node.
+**השלכה:** reformat חיצוני של הקובץ היומי כבר לא משבש ספירה/שליחה. תואם את עקרון ה-fail-safe. נבדק על dash/asterisk+escaped/רווחים+שני-escaped/לא-רשומות; status חי חזר ל-9.
+
 ---
 
 ## מלכודות פתוחות / לשים לב בהמשך

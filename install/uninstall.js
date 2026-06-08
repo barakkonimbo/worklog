@@ -28,13 +28,13 @@ console.log('Work Journal — uninstaller');
 log('config dir: ' + fwd(CLAUDE_DIR));
 console.log('');
 
-// 1. hooks — remove EVERY worklog-*.js (mirrors install.js, which copies the whole hooks dir).
-// A hard-coded list silently goes stale as hooks are added (notify/email/config/schedule/blocks/calendar),
-// leaving orphaned files behind — so match by prefix instead.
+// 1. hooks — remove EVERY worklog*.js (mirrors install.js, which copies the whole hooks dir).
+// A hard-coded list silently goes stale as hooks are added (notify/email/config/schedule/blocks/
+// calendar/update + the worklog.js dispatcher), leaving orphaned files behind — so match by prefix.
 let n = 0;
 try {
   for (const f of fs.readdirSync(HOOKS_DIR)) {
-    if (/^worklog-.*\.js$/.test(f) && rm(path.join(HOOKS_DIR, f))) n++;
+    if (/^worklog(-.*)?\.js$/.test(f) && rm(path.join(HOOKS_DIR, f))) n++;
   }
 } catch { /* hooks dir absent — nothing to remove */ }
 log('hooks: removed ' + n + ' files');

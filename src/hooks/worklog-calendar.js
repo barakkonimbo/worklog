@@ -175,10 +175,9 @@ function deleteEvent(token, calId, eventId) {
 // ---------- day data ----------
 function parseEntries(md) {
   const out = [];
-  const re = /^- (\d{2}:\d{2}) \[([^\]]+)\] (.+)$/;
   for (const ln of (md || '').split('\n')) {
-    const m = re.exec(ln.trim());
-    if (m) out.push({ time: m[1], project: m[2], msg: m[3] });
+    const e = lib.parseEntryLine(ln);
+    if (e) out.push({ time: e.time, project: e.project, msg: e.message });
   }
   return out;
 }

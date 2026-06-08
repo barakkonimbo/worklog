@@ -63,11 +63,10 @@ function show(c) {
 // Unified status view: today's activity + targets + schedule + language (for `/worklog status`).
 function status(c) {
   const today = lib.now();
-  const re = /^- (\d{2}:\d{2}) \[([^\]]+)\] (.+)$/;
   let count = 0; const projects = new Set();
   for (const ln of lib.readIf(lib.dailyFile(today)).split('\n')) {
-    const m = re.exec(ln.trim());
-    if (m) { count++; projects.add(m[2]); }
+    const e = lib.parseEntryLine(ln);
+    if (e) { count++; projects.add(e.project); }
   }
   console.log('— Work Journal · סטטוס · ' + lib.dateKey(today) + ' (' + lib.hebDow(today) + ') —\n');
   console.log('📋 היום: ' + (count ? count + ' רשומות · פרויקטים: ' + [...projects].join(', ') : 'אין רשומות עדיין'));
@@ -81,30 +80,46 @@ function help() {
   const H = __dirname.replace(/\\/g, '/');
   const J = lib.ROOT.replace(/\\/g, '/');
   const q = (f) => 'node "' + H + '/' + f + '"';
+  const w = (sub) => 'node "' + H + '/worklog.js" ' + sub; // unified terminal dispatcher
   console.log(`— Work Journal · עזרה · כל הפקודות —
 
-📝 דרך הסקיל /worklog (בקשה רגילה ל-Claude):
-  /worklog <טקסט>           רשומה ידנית ליומן
-  /worklog show             הצגת יומן היום
-  /worklog status           תמונת-מצב: היום + יעדים + שפה + תזמון
-  /worklog summary          סיכום יומי עכשיו (יצירה בלבד)
-  /worklog week             סיכום שבועי עכשיו
-  /worklog send             מחדש ושולח עכשיו לכל יעד מופעל (מייל/יומן)
-  /worklog send email       שליחה עכשיו רק במייל
-  /worklog send calendar    סנכרון עכשיו רק ליומן
-  /worklog help             המסך הזה
-  הגדרות בשפה חופשית:        "כבה מייל" · "תשלח ב-21:00" · "שבועי ביום ה׳" · "שפה לאנגלית"
+כל פעולה זמינה גם בצ'אט וגם בטרמינל. בטרמינל הכל דרך פקודה אחת (worklog.js) —
+העתק-הדבק את שורת "טרמינל". (התקנת מייל/יומן ראשונית — בתחתית.)
 
-⚙️  CLI ישיר (PowerShell/cmd) — למתקדמים:
-  ${q('worklog-config.js')}                  הצג הגדרות (ללא ארגומנט)
-  ${q('worklog-config.js')} status           תמונת-מצב מאוחדת
-  ${q('worklog-config.js')} email on|off · email.time 21:00 · email.days Sun-Thu
-  ${q('worklog-config.js')} calendar on|off · weekly off · weekly.day Sunday · weekly.time 08:00
-  ${q('worklog-config.js')} language English      (ברירת מחדל: עברית)
-  ${q('worklog-summary.js')} --daily|--weekly [--deliver] [--only email|calendar] [--date YYYY-MM-DD]
+• רשומה ידנית ליומן
+    צ'אט:    /worklog <טקסט>
+    טרמינל:  ${w('log "טקסט"')}
+• הצגת יומן היום
+    צ'אט:    /worklog show
+    טרמינל:  ${w('show')}
+• תמונת-מצב (היום + יעדים + שפה + תזמון)
+    צ'אט:    /worklog status
+    טרמינל:  ${w('status')}
+• סיכום יומי עכשיו (יצירה בלבד)
+    צ'אט:    /worklog summary
+    טרמינל:  ${w('summary')}
+• סיכום שבועי עכשיו
+    צ'אט:    /worklog week
+    טרמינל:  ${w('week')}
+• שליחה עכשיו לכל יעד מופעל (מייל/יומן)
+    צ'אט:    /worklog send  ·  send email  ·  send calendar
+    טרמינל:  ${w('send')}  ·  ${w('send email')}  ·  ${w('send calendar')}
+• עדכון מהתיקייה המקומית (בודק תוכן · מסביר · מסמן פעולות)
+    צ'אט:    /worklog update
+    טרמינל:  ${w('update')}    (תצוגה בלבד: ${w('update --check')})
+• הגדרות (מייל/יומן/שבועי/שפה)
+    צ'אט:    "כבה מייל" · "תשלח ב-21:00" · "שבועי ביום ה׳" · "שפה לאנגלית"
+    טרמינל:  ${w('email on|off')} · ${w('email.time 21:00')} · ${w('email.days Sun-Thu')}
+             ${w('weekly on|off')} · ${w('weekly.day Sunday')} · ${w('weekly.time 08:00')}
+             ${w('calendar on|off')} · ${w('language English')}
+• עזרה (המסך הזה)
+    צ'אט:    /worklog help
+    טרמינל:  ${w('help')}
+
+ישירות (setup/מתקדם — קלט מוסתר, הרץ בטרמינל שלך):
   ${q('worklog-email.js')} --setup | --test | --disable
   ${q('worklog-calendar.js')} --setup | --test | --sync | --disable
-  ${q('worklog-log.js')} --msg "..." [--project NAME]
+  ${q('worklog-summary.js')} --daily|--weekly [--deliver] [--only email|calendar] [--date YYYY-MM-DD]
 
 ⏰ אוטומטי (Task Scheduler): 18:00 התראה · 20:30 מייל+יומן (אם מופעל) · ראשון 08:00 שבועי
 📂 נתונים וסיכומים: ${J}`);

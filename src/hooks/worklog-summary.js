@@ -96,13 +96,11 @@ function claudeSummarize(prompt) {
 // ---------- fallback (no AI): group entries by project ----------
 function fallbackSummary(title, sources) {
   const byProj = {};
-  const re = /^- (\d{2}:\d{2}) \[([^\]]+)\] (.+)$/;
   for (const { content } of sources) {
     for (const ln of content.split('\n')) {
-      const m = re.exec(ln.trim());
-      if (!m) continue;
-      const [, time, proj, msg] = m;
-      (byProj[proj] = byProj[proj] || []).push(`${time} ${msg}`);
+      const e = lib.parseEntryLine(ln);
+      if (!e) continue;
+      (byProj[e.project] = byProj[e.project] || []).push(`${e.time} ${e.message}`);
     }
   }
   let out = `# ${title}\n\n> נוצר אוטומטית (ללא סיכום AI — קלוד לא היה זמין).\n\n`;
@@ -153,7 +151,7 @@ function readLastSent() { return (lib.readIf(LAST_SENT) || '').trim() || null; }
 function writeLastSent(dk) { try { fs.writeFileSync(LAST_SENT, dk + '\n', 'utf8'); } catch { /* non-fatal */ } }
 function addDays(d, n) { const x = new Date(d); x.setDate(x.getDate() + n); return x; }
 // Does this day's raw log have at least one real entry?
-function hasEntries(d) { return /^- \d{2}:\d{2} \[[^\]]+\] /m.test(lib.readIf(lib.dailyFile(d))); }
+function hasEntries(d) { return lib.hasEntryLine(lib.readIf(lib.dailyFile(d))); }
 // "Fresh" = the summary exists and is newer than its log → nothing changed since it was written,
 // so we can reuse it instead of paying for another AI run.
 function summaryFresh(d) {

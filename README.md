@@ -4,7 +4,7 @@
 פרויקט), ומפיקה **סיכום AI** — יומי ושבועי. עם **התראה לחיצה**, **מייל אופציונלי**, ו**סנכרון Google Calendar** (אופציונלי).
 הכול נשמר **מקומית** אצלך, באף שרת.
 
-`גרסה 0.7.6` · `Windows (mac/Linux חלקי)` · `ללא תלות חיצונית (Node + Claude CLI)`
+`גרסה 0.8.0` · `Windows (mac/Linux חלקי)` · `ללא תלות חיצונית (Node + Claude CLI)`
 
 ---
 
@@ -31,6 +31,8 @@
 
 מדריך מלא לחבר צוות: [docs/SEND-TO-TEAMMATE.md](./docs/SEND-TO-TEAMMATE.md) · הוראות מותקנות: [install/INSTALL.md](./install/INSTALL.md).
 
+**עדכון גרסה:** רענן את תיקיית `work-journal-setup` (zip חדש / pull לקטלוג) ואז `/worklog update` — בודק לפי תוכן (לא רק מספר גרסה), מסביר מה השתנה, ומסמן אם נדרשת התייחסות. עדכון רגיל **לא** מבקש סיסמאות (ה-creds המוצפנים נשמרים).
+
 ---
 
 ## שימוש
@@ -42,8 +44,15 @@
 - `/worklog show` — הצגת יומן היום · `/worklog status` — תמונת-מצב (היום + יעדים + תזמון)
 - `/worklog summary` · `/worklog week` — סיכום מיידי (יצירה בלבד)
 - `/worklog send` — מחדש ושולח עכשיו לכל יעד מופעל (גם `send email` / `send calendar`)
-- `/worklog help` — כל הפקודות במסך אחד (סקיל + CLI)
+- `/worklog update` — עדכון מהתיקייה המקומית (בודק לפי תוכן, מסביר מה השתנה, מסמן פעולות שדורשות התייחסות; לא נוגע ב-creds)
+- `/worklog help` — כל הפקודות במסך אחד, **מיפוי צ'אט↔טרמינל** copy-paste
 - הגדרות בשפה חופשית — "כבה מייל", "תשלח ב-21:00", "שבועי ביום חמישי", "שנה שפת סיכום לאנגלית"
+
+**בטרמינל — פקודה אחת לכל הפעלים** (במקום לזכור 5 סקריפטים):
+```
+node "%USERPROFILE%\.claude\hooks\worklog.js" status   # וגם: show · send · summary · week · update · log "טקסט" · email off · ...
+node "%USERPROFILE%\.claude\hooks\worklog.js" help     # מיפוי מלא צ'אט↔טרמינל
+```
 
 **מייל (אופציונלי, כבוי כברירת מחדל):**
 ```

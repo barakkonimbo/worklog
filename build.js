@@ -30,6 +30,7 @@ fs.copyFileSync(path.join(ROOT, 'install', 'INSTALL.md'), path.join(OUT, 'INSTAL
 fs.copyFileSync(path.join(ROOT, 'install', 'install.js'), path.join(OUT, 'install.js'));
 fs.copyFileSync(path.join(ROOT, 'install', 'uninstall.js'), path.join(OUT, 'uninstall.js'));
 fs.copyFileSync(path.join(ROOT, 'VERSION'), path.join(OUT, 'VERSION'));
+fs.copyFileSync(path.join(ROOT, 'upgrade-notes.json'), path.join(OUT, 'upgrade-notes.json'));
 
 // bundle source (install.js resolves ./src when bundled)
 fs.cpSync(path.join(ROOT, 'src'), path.join(OUT, 'src'), { recursive: true });

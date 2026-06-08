@@ -1,6 +1,6 @@
 # סיכום מלא — מה בנינו (Work Journal)
 
-> מסמך זה מסכם **בדיוק** מה נעשה בפיתוח מערכת ה-work-journal, נכון לגרסה **0.7.6** (2026-06-08).
+> מסמך זה מסכם **בדיוק** מה נעשה בפיתוח מערכת ה-work-journal, נכון לגרסה **0.8.0** (2026-06-08).
 > טכני עמוק → [ARCHITECTURE.md](./ARCHITECTURE.md) · הנמקות → [DECISIONS.md](./DECISIONS.md) · התקדמות → [PROGRESS.md](./PROGRESS.md).
 
 ---
@@ -36,7 +36,7 @@
 **קבצי ליבה (`src/hooks/` → `~/.claude/hooks/`):**
 | קובץ | תפקיד |
 |------|-------|
-| `worklog-lib.js` | עזרים: נתיבים, תאריכים (שבוע ISO, יום עברי), `appendEntry`, `appendActivity`/`activityFile`, `projectFromCwd` |
+| `worklog-lib.js` | עזרים: נתיבים, תאריכים (שבוע ISO, יום עברי), `appendEntry`, `appendActivity`/`activityFile`, `projectFromCwd`; **פרסר-רשומות סובלני** (`parseEntryLine`/`hasEntryLine`/`entryRe`, v0.8.0) + `computeManifest` (לזיהוי עדכון) |
 | `worklog-log.js` | CLI להוספת רשומה (`--project`, `--msg`) |
 | `worklog-prompt.js` | **UserPromptSubmit (v0.7.6):** חותמת זמן+פרויקט לפני כל מענה → `.sessions/<date>.activity.jsonl` (שכבת פעילות לבלוקים; ללא תוכן; stdout ריק) |
 | `worklog-session-start.js` | SessionStart: מזריק יומן היום+אתמול + הוראת תיעוד; כותב marker. recursion-guard. |
@@ -49,6 +49,8 @@
 | `worklog-calendar.js` | סנכרון Google Calendar אופציונלי (OAuth2 loopback, REST); `--setup`/`--test`/`--sync`; תיאור-סיכום ב-**HTML** (`toCalHtml`); token מוצפן DPAPI |
 | `worklog-config.js` | מנוע הגדרות קל (email/calendar on/off, שעות, ימים, **שפה**) + **`status`** מאוחד + **`help`** (כל הפקודות) — כל שינוי רושם מחדש משימות |
 | `worklog-schedule.js` | רישום המשימות מתוך config (משותף; 20:30 נרשם אם email **או** calendar) |
+| `worklog-update.js` | **עדכון מקומי (v0.8.0):** משווה content-manifest מול המותקן, מסביר מ-`upgrade-notes.json`, מסמן פעולות, ומריץ `install.js`. `--check`/`--source`. creds לא נוגעים |
+| `worklog.js` | **Dispatcher לטרמינל (v0.8.0):** פקודה אחת `worklog.js <verb>` → מנתבת לכל הסקריפטים (status/show/send/summary/week/log/update/הגדרות) |
 
 **שילוב במערכת:** בלוק ב-`CLAUDE.md` · רשומות `SessionStart`+`SessionEnd` ב-`settings.json` (אדיטיבי,
 מגובה) · skill `/worklog` · משימות Task Scheduler מתוך config.
@@ -95,16 +97,18 @@
 | Calendar `--sync` — בלוקים + אירוע סיכום ביומן הייעודי; אידמפוטנטי (re-sync מחליף, אפס כפילויות) | ✅ |
 | ממשק on-demand (`send`/`status`/`language`) — 18/18 בדיקות מבודדות: הזרקת שפה, gating יעדים, גארד "אין רשומות", `--email` alias | ✅ |
 | **שכבת פעילות + catch-up + דילוג-סיכום (v0.7.6)** — 15/15: בלוקים (tail/split@30/clamp/notes/fallback/legacy), e2e מייל (catch-up→אתמול/nothing-new/manual-today), hook (stdout ריק/WORKLOG_DISABLE) | ✅ |
+| **עדכון מקומי + dispatcher + פרסר סובלני (v0.8.0)** — update 5/5 (שדרוג+notes/החלה/עדכני/שינוי-באותה-גרסה/אין-מקור), dispatcher (help/show/status/update/לא-מוכר), פרסר 5 קלטים; status חי חזר ל-9 | ✅ |
 
 ---
 
-## 6. סטטוס נוכחי (0.7.6)
+## 6. סטטוס נוכחי (0.8.0)
 
 - ✅ **פעיל ומאומת** אצל המשתמש + אצל חבר צוות אחד. ניתן להפצה (zip).
 - ✅ מייל, התראות-לחיצה, הגדרות-קלות, פיצול תזמון, **Google Calendar** (opt-in; **mirror מתמשך** — sync בכל סגירת סשן, מתעדכן גם אחרי 20:30), **וממשק on-demand** (`send`/`status`/`help`/בחירת שפה) — הכול עובד.
 - **עיקרון מסירה:** מייל = push חד-פעמי (20:30 + `send` ידני) · יומן = mirror מתמשך · שבועי = catch-all שקורא את הגלם המלא. הנתונים לא אובדים גם אם מייל-ערב פספס עבודה מאוחרת.
 - ✅ **v0.7.4:** בלוקי-יומן עם **fallback מבוסס-רשומות** (כל עבודה מתועדת מופיעה ביומן — לא רק מה שנלכד ב-session) + **פורמט מותאם-יעד** (מייל HTML, תיאור יומן HTML-מוגבל — לא Markdown גולמי).
 - ✅ **v0.7.6:** **שכבת פעילות** (`UserPromptSubmit` חותם זמן+פרויקט לפני כל מענה) → בלוקי-יומן מדויקים (פיצול 30ד׳/זנב 10ד׳), בנפרד משכבת התוכן שמזינה את הסיכום. + **catch-up למייל** (ריצה שפוספסה נשלחת למחרת ליום הנכון) + **דילוג-סיכום** (אין סיכום-מחדש ללא שינוי).
-- ⏳ **טרם:** תזמון cross-platform (mac/Linux); בחירת שעות בזמן ההתקנה; שיפורי E1/E3/E4 ביומן (Known Limitations).
+- ✅ **v0.8.0:** **`/worklog update`** — עדכון מהתיקייה המקומית עם זיהוי לפי content-manifest (לא רק גרסה), הסבר מ-`upgrade-notes.json`, וסימון פעולות; **creds לא נוגעים**. + **dispatcher `worklog.js`** (פקודה אחת לכל פעלי הטרמינל; `help` = מיפוי צ'אט↔טרמינל). + **הקשחת פרסר-רשומות** (matcher משותף סובלני ל-`*`/`\[` ב-5 אתרים — מונע ספירה-0/דילוג-יום אחרי reformat).
+- ⏳ **טרם:** תזמון cross-platform (mac/Linux); בחירת שעות בזמן ההתקנה; שיפורי E1/E3/E4 ביומן (Known Limitations); קיצור-CLI Tier 2 (פונקציית `$PROFILE`, opt-in).
 
 המשך וסדר עדיפויות → [PROGRESS.md](./PROGRESS.md).
