@@ -11,6 +11,7 @@
  *   2. installs the /worklog skill      -> <claude>/skills/worklog/SKILL.md   (paths substituted)
  *   3. merges the work-journal block    -> <claude>/CLAUDE.md                 (between markers)
  *   4. merges UserPromptSubmit+SessionStart+SessionEnd -> <claude>/settings.json (idempotent, backed up)
+ *   4b. backfills new default keys into an existing config.json (upgrade; preserves user values)
  *   5. registers scheduled summaries    -> Windows Task Scheduler (per config: 18:00 notify / 20:30 email+calendar / Sun weekly)
  *   6. ensures the journal data dir exists
  *
@@ -115,6 +116,11 @@ function main() {
   fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2) + '\n', 'utf8');
   log('settings.json: merged UserPromptSubmit + SessionStart + SessionEnd (existing hooks preserved)');
 
+  // 4b. backfill new config defaults into an existing config.json (upgrade path).
+  //     Merge defaults UNDER the user's values so new keys (e.g. calendar.activityGapMinutes/
+  //     tailMinutes) become present + tunable, while every existing value is preserved.
+  ensureConfigDefaults();
+
   // 5. scheduling
   if (process.platform === 'win32') registerWindowsTasks();
   else log('scheduling: ' + process.platform + ' not yet supported — add cron/launchd manually (see docs/DECISIONS.md D4).');
@@ -126,6 +132,29 @@ function main() {
 
   console.log('\nDone ✅  Hooks activate on your NEXT Claude Code session.');
   console.log('Manual control: /worklog   •   summaries land in ' + fwd(JOURNAL_DIR));
+}
+
+// Backfill new default keys into an EXISTING config.json on upgrade, without clobbering anything the
+// user set. Defaults go UNDER the user's values (user wins on every conflict); only genuinely-missing
+// keys are added. No config.json yet (calendar/email never set up) → nothing to do: defaultConfig is
+// applied at --setup time, and computeBlocks/calendar fall back to the same defaults at read time, so
+// behavior is identical either way. Backs up before rewriting; only writes when something changed.
+function ensureConfigDefaults() {
+  const cfgPath = path.join(JOURNAL_DIR, 'config.json');
+  let ex;
+  try { ex = JSON.parse(fs.readFileSync(cfgPath, 'utf8')); } catch { return; } // absent/invalid → skip
+  const schedule = require(path.join(findSrc(), 'hooks', 'worklog-schedule.js'));
+  const d = schedule.defaultConfig();
+  const merged = {
+    ...d, ...ex,
+    email: { ...d.email, ...(ex.email || {}) },
+    weekly: { ...d.weekly, ...(ex.weekly || {}) },
+    calendar: { ...d.calendar, ...(ex.calendar || {}) },
+  };
+  if (JSON.stringify(merged) === JSON.stringify(ex)) { log('config.json: already current (no new keys)'); return; }
+  try { fs.writeFileSync(cfgPath + '.bak', JSON.stringify(ex, null, 2) + '\n', 'utf8'); } catch { /* non-fatal */ }
+  fs.writeFileSync(cfgPath, JSON.stringify(merged, null, 2) + '\n', 'utf8');
+  log('config.json: backfilled new default keys (existing values preserved; backup → config.json.bak)');
 }
 
 // Remove any existing groups whose command references scriptName, then append the template's group(s).

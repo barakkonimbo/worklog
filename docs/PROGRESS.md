@@ -52,6 +52,7 @@
 - **Catch-up מייל (`worklog-summary.js`):** ריצה מתוזמנת (`--email`) שפוספסה (מכונה כבויה) נשלחת למחרת **עבור היום שפוספס** (חלון יומיים, `.email-last-sent`). שליחה ידנית (`send`/`--deliver`) → **תמיד היום, תמיד שולחת**, לא נחסמת מ-last-sent.
 - **דילוג-סיכום:** סיכום שלא השתנה (mtime) → שימוש חוזר ללא קריאת `claude` (אפס טוקנים).
 - **חיווט:** `worklog-prompt.js` ב-`settings-hooks.json` + `install.js` + הסרה גנרית ב-`uninstall.js`; ברירות-מחדל `activityGapMinutes:30`/`tailMinutes:10` ב-`worklog-schedule.js`/config.
+- **backfill ב-installer:** שדרוג משלים מפתחות-config חדשים ל-`config.json` קיים (מיזוג מתחת לערכי המשתמש, גיבוי `.bak`, אידמפוטנטי) — כך הכפתורים גלויים וניתנים-לכוונון, לא רק ברירת-מחדל קשיחה בקוד. *(הבהרה: ה-30/10 ממילא חלים בזמן-קריאה דרך `|| 30`/`!= null` — אין באג; ה-backfill הוא לשקיפות.)* אומת חי: שדרוג ה-config של המשתמש הוסיף 30/10 תוך שימור `email.time=18:00`/calendar; ריצה שנייה = no-op.
 - **נבדק — 15/15:** יחידה לבלוקים (tail/split@30/exactly-30/clamp/notes/fallback/no-over-report/legacy) + e2e למייל ב-subprocess עם **fake-claude** (today/reuse/catch-up→אתמול/nothing-new/manual-תמיד-today) + hook ידני (stdout ריק/חותמת-ללא-תוכן/WORKLOG_DISABLE) + אינטגרציה מקצה-לקצה + syntax×8. D17, hook #13, bump 0.7.6.
 
 **הבא:** build + push לשני הריפו + התקנה חיה (הבלוקים המדויקים מתחילים להצטבר מהסשן הבא).
