@@ -34,7 +34,7 @@
 
 ## שימוש אחרי ההתקנה
 - **אוטומטי:** נטען בכל סשן; קלוד מתעד בנקודות מפתח; התראת 18:00.
-- **ידני:** `/worklog <טקסט>` לרשום · `/worklog show` · `/worklog status` · `/worklog summary` · `/worklog send` (שלח עכשיו) · `/worklog update` (עדכון) · `/worklog help` (כל הפקודות).
+- **ידני:** `/worklog <טקסט>` לרשום · `/worklog show` · `/worklog status` · `/worklog summary` · `/worklog send` (שלח עכשיו) · `/worklog update` (עדכון) · `/worklog push`/`unpush` (מירור היום ליומן שלך — לא מחליף את Work Journal) · `/worklog help` (כל הפקודות).
 - **בטרמינל:** פקודה אחת לכל הפעלים — `node "%USERPROFILE%\.claude\hooks\worklog.js" status` (וגם `show`/`send`/`summary`/`update`/`log "..."`/`email off`...). `worklog.js help` מציג מיפוי צ'אט↔טרמינל.
 
 ## מייל בסוף יום (אופציונלי — כבוי כברירת מחדל)

@@ -1,6 +1,6 @@
 # סיכום מלא — מה בנינו (Work Journal)
 
-> מסמך זה מסכם **בדיוק** מה נעשה בפיתוח מערכת ה-work-journal, נכון לגרסה **0.8.1** (2026-06-08).
+> מסמך זה מסכם **בדיוק** מה נעשה בפיתוח מערכת ה-work-journal, נכון לגרסה **0.8.2** (2026-06-08).
 > טכני עמוק → [ARCHITECTURE.md](./ARCHITECTURE.md) · הנמקות → [DECISIONS.md](./DECISIONS.md) · התקדמות → [PROGRESS.md](./PROGRESS.md).
 
 ---
@@ -46,7 +46,7 @@
 | `worklog-email.js` | מייל אופציונלי (Gmail/SMTP); `--setup`/`--test`; **גוף HTML** (`toHtml`); סיסמה מוצפנת DPAPI |
 | `worklog-format.js` | **המרת פורמט פר-יעד** (v0.7.4): `toHtml` (מייל) · `toCalHtml` (יומן) · `toPlain` — מבנה בלבד |
 | `worklog-blocks.js` | חישוב בלוקי-זמן (טהור, 0 AI) — **מסלול פעילות** (v0.7.6: חותמות-prompt → פיצול 30ד׳/זנב 10ד׳; v0.8.1: **קיבוץ פר-פרויקט סובלני-להשתלבות**) + **fallback מבוסס-רשומות** + מסלול legacy מעוגן-סשנים |
-| `worklog-calendar.js` | סנכרון Google Calendar אופציונלי (OAuth2 loopback, REST); `--setup`/`--test`/`--sync`; תיאור-סיכום ב-**HTML** (`toCalHtml`); token מוצפן DPAPI |
+| `worklog-calendar.js` | סנכרון Google Calendar אופציונלי (OAuth2 loopback, REST); `--setup`/`--test`/`--sync`; **מירור ליומן המשתמש (v0.8.2):** `--push`/`--unpush`/`--push-setup`/`--list-calendars` + `autoPush`; תיאור-סיכום ב-**HTML** (`toCalHtml`); token מוצפן DPAPI |
 | `worklog-config.js` | מנוע הגדרות קל (email/calendar on/off, שעות, ימים, **שפה**) + **`status`** מאוחד + **`help`** (כל הפקודות) — כל שינוי רושם מחדש משימות |
 | `worklog-schedule.js` | רישום המשימות מתוך config (משותף; 20:30 נרשם אם email **או** calendar) |
 | `worklog-update.js` | **עדכון מקומי (v0.8.0):** משווה content-manifest מול המותקן, מסביר מ-`upgrade-notes.json`, מסמן פעולות, ומריץ `install.js`. `--check`/`--source`. creds לא נוגעים |
@@ -101,7 +101,7 @@
 
 ---
 
-## 6. סטטוס נוכחי (0.8.1)
+## 6. סטטוס נוכחי (0.8.2)
 
 - ✅ **פעיל ומאומת** אצל המשתמש + אצל חבר צוות אחד. ניתן להפצה (zip).
 - ✅ מייל, התראות-לחיצה, הגדרות-קלות, פיצול תזמון, **Google Calendar** (opt-in; **mirror מתמשך** — sync בכל סגירת סשן, מתעדכן גם אחרי 20:30), **וממשק on-demand** (`send`/`status`/`help`/בחירת שפה) — הכול עובד.
@@ -110,6 +110,7 @@
 - ✅ **v0.7.6:** **שכבת פעילות** (`UserPromptSubmit` חותם זמן+פרויקט לפני כל מענה) → בלוקי-יומן מדויקים (פיצול 30ד׳/זנב 10ד׳), בנפרד משכבת התוכן שמזינה את הסיכום. + **catch-up למייל** (ריצה שפוספסה נשלחת למחרת ליום הנכון) + **דילוג-סיכום** (אין סיכום-מחדש ללא שינוי).
 - ✅ **v0.8.0:** **`/worklog update`** — עדכון מהתיקייה המקומית עם זיהוי לפי content-manifest (לא רק גרסה), הסבר מ-`upgrade-notes.json`, וסימון פעולות; **creds לא נוגעים**. + **dispatcher `worklog.js`** (פקודה אחת לכל פעלי הטרמינל; `help` = מיפוי צ'אט↔טרמינל). + **הקשחת פרסר-רשומות** (matcher משותף סובלני ל-`*`/`\[` ב-5 אתרים — מונע ספירה-0/דילוג-יום אחרי reformat).
 - ✅ **v0.8.1:** תיקון בלוקי-יומן — **קיבוץ חותמות-פעילות פר-פרויקט** (סובלני להשתלבות): אותו פרויקט בטווח 30ד׳ מתאחד לבלוק אחד גם כשפרויקט אחר השתלב בין החותמות (קודם התפצל להמון בלוקים זעירים). אומת חי: 2026-06-08 ירד 18→11 בלוקים.
+- ✅ **v0.8.2:** **מירור היום ליומן המשתמש** — `/worklog push`/`unpush` (העתק מלא ליעד, ברירת מחדל `primary`, אידמפוטנטי, לא מחליף את Work Journal) + **`autoPush`** opt-in (מירור בסוף-יום). יעד נבחר ב-`--push-setup`/`--list-calendars`; ה-OAuth scope המלא מספיק. + תיקון: "ציר זמן" בסיכום בלי שעות/דקות.
 - ⏳ **טרם:** תזמון cross-platform (mac/Linux); בחירת שעות בזמן ההתקנה; שיפורי E1/E3/E4 ביומן (Known Limitations); קיצור-CLI Tier 2 (פונקציית `$PROFILE`, opt-in).
 
 המשך וסדר עדיפויות → [PROGRESS.md](./PROGRESS.md).

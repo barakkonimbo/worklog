@@ -204,14 +204,15 @@ function dateObjOf(dateStr) { const [y, m, d] = dateStr.split('-').map(Number); 
 function nextDateStr(dateStr) { const d = dateObjOf(dateStr); d.setDate(d.getDate() + 1); return lib.dateKey(d); }
 
 // ---------- sync a day ----------
-async function syncDay(dateStr) {
+async function syncDay(dateStr, opts = {}) {
   const cfg = readConfig();
-  if (!cfg.calendar || !cfg.calendar.enabled || !cfg.calendar.calendarId) return { skipped: 'not-enabled' };
+  const cal = cfg.calendar || {};
+  // Default target = the dedicated "Work Journal" calendar; a push passes opts.calId (e.g. 'primary').
+  const calId = opts.calId || cal.calendarId;
+  if (!cal.enabled || !calId || !fs.existsSync(CRED)) return { skipped: 'not-enabled' };
   if (process.platform !== 'win32') return { skipped: 'not-windows' };
 
-  const cal = cfg.calendar;
   const token = await getAccessToken();
-  const calId = cal.calendarId;
   const dObj = dateObjOf(dateStr);
 
   const entries = parseEntries(lib.readIf(lib.dailyFile(dObj)));
@@ -248,6 +249,30 @@ async function syncDay(dateStr) {
   for (const ev of prior) await deleteEvent(token, calId, ev.id);
   for (const ev of events) await createEvent(token, calId, ev);
   return { blocks: blocks.length, events: events.length, replaced: prior.length };
+}
+
+// ---------- push: full mirror of a day to ANOTHER calendar (e.g. the user's primary) ----------
+// `push` reuses syncDay against pushCalendarId — a full 1:1 mirror (same blocks + summary, no filtering).
+// It NEVER replaces the private "Work Journal" calendar; it only ALSO copies the day elsewhere.
+// Idempotent on the target (same worklog=<date> tag → delete-then-recreate). Token already has full scope.
+function pushTarget(cfg) { return (cfg.calendar && cfg.calendar.pushCalendarId) || 'primary'; }
+function autoPushEnabled() { const c = readConfig(); return !!(c.calendar && c.calendar.enabled && c.calendar.autoPush && fs.existsSync(CRED)); }
+
+// Remove this day's worklog-tagged events from a calendar (the `unpush` / retract op). No re-insert.
+async function clearDay(dateStr, calId) {
+  const cfg = readConfig();
+  if (!cfg.calendar || !cfg.calendar.enabled || !fs.existsSync(CRED)) return { skipped: 'not-enabled' };
+  if (process.platform !== 'win32') return { skipped: 'not-windows' };
+  const token = await getAccessToken();
+  const prior = await listTaggedEvents(token, calId, dateStr);
+  for (const ev of prior) await deleteEvent(token, calId, ev.id);
+  return { removed: prior.length };
+}
+
+async function listCalendars(token) {
+  const j = await httpsJson('https://www.googleapis.com/calendar/v3/users/me/calendarList?maxResults=250',
+    { headers: { Authorization: `Bearer ${token}` } });
+  return (j.items || []).map((c) => ({ id: c.id, summary: c.summary, primary: !!c.primary }));
 }
 
 // ---------- resolve client id/secret for --setup ----------
@@ -328,14 +353,71 @@ async function handleSync(argv) {
   console.log(`[worklog-calendar] synced ${dateStr}: ${r.events} events (${r.blocks} blocks), replaced ${r.replaced}`);
 }
 
-module.exports = { syncDay, calendarEnabled };
+async function handlePush(argv) {
+  if (!calendarEnabled()) { console.error('Calendar not configured — run --setup first.'); process.exit(1); }
+  const dateStr = argv.find((a) => /^\d{4}-\d{2}-\d{2}$/.test(a)) || lib.dateKey(lib.now());
+  const calId = pushTarget(readConfig());
+  const r = await syncDay(dateStr, { calId });
+  if (r.skipped) { console.log('[worklog-calendar] push skipped:', r.skipped); return; }
+  console.log(`[worklog-calendar] pushed ${dateStr} → ${calId}: ${r.events} events (${r.blocks} blocks), replaced ${r.replaced}`);
+}
+
+async function handleUnpush(argv) {
+  if (!calendarEnabled()) { console.error('Calendar not configured — run --setup first.'); process.exit(1); }
+  const dateStr = argv.find((a) => /^\d{4}-\d{2}-\d{2}$/.test(a)) || lib.dateKey(lib.now());
+  const calId = pushTarget(readConfig());
+  const r = await clearDay(dateStr, calId);
+  if (r.skipped) { console.log('[worklog-calendar] unpush skipped:', r.skipped); return; }
+  console.log(`[worklog-calendar] unpushed ${dateStr} from ${calId}: removed ${r.removed}`);
+}
+
+// Non-interactive list — used by the /worklog skill so Claude can show the calendars and the user picks.
+async function handleListCalendars() {
+  if (!calendarEnabled()) { console.error('Calendar not configured — run --setup first.'); process.exit(1); }
+  const token = await getAccessToken();
+  const cals = await listCalendars(token);
+  const cur = pushTarget(readConfig());
+  console.log('Your calendars (current push target = ' + cur + '):');
+  cals.forEach((c, i) => console.log(`  ${i + 1}. ${c.summary}${c.primary ? '  (primary)' : ''}   [${c.id}]`));
+}
+
+// Interactive picker (real terminal): list calendars, pick one, optionally enable the auto end-of-day mirror.
+async function handlePushSetup() {
+  if (!calendarEnabled()) { console.error('Calendar not configured — run --setup first.'); process.exit(1); }
+  const token = await getAccessToken();
+  const cals = await listCalendars(token);
+  console.log('\nWork Journal — choose the calendar to mirror your day to:');
+  cals.forEach((c, i) => console.log(`  ${i + 1}. ${c.summary}${c.primary ? '  (primary)' : ''}`));
+  const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
+  const ask = (q) => new Promise((res) => rl.question(q, res));
+  const pick = parseInt((await ask('\nNumber [default 1 = primary]: ')).trim(), 10);
+  const idx = Number.isFinite(pick) ? Math.max(1, Math.min(cals.length, pick)) - 1 : 0;
+  const chosen = cals[idx] || cals.find((c) => c.primary) || cals[0];
+  const autoAns = (await ask('Also mirror automatically at end of day? (y/N): ')).trim().toLowerCase();
+  rl.close();
+  const schedule = require('./worklog-schedule.js');
+  const d = schedule.defaultConfig();
+  const c = readConfig();
+  c.calendar = { ...d.calendar, ...(c.calendar || {}) };
+  c.calendar.pushCalendarId = chosen.primary ? 'primary' : chosen.id;
+  c.calendar.autoPush = /^y(es)?$/.test(autoAns);
+  writeConfig(c);
+  console.log(`\n✅ Push target: "${chosen.summary}". Auto end-of-day mirror: ${c.calendar.autoPush ? 'ON' : 'OFF'}.`);
+  console.log('Note: this does NOT replace your private "Work Journal" calendar — it only ALSO mirrors the day there.');
+}
+
+module.exports = { syncDay, calendarEnabled, autoPushEnabled };
 
 if (require.main === module) {
   const argv = process.argv.slice(2);
   const run = argv.includes('--setup') ? handleSetup(argv)
     : argv.includes('--test') ? handleTest()
     : argv.includes('--sync') ? handleSync(argv)
+    : argv.includes('--push') ? handlePush(argv)
+    : argv.includes('--unpush') ? handleUnpush(argv)
+    : argv.includes('--push-setup') ? handlePushSetup()
+    : argv.includes('--list-calendars') ? handleListCalendars()
     : argv.includes('--disable') ? (() => { const c = readConfig(); if (c.calendar) { c.calendar.enabled = false; writeConfig(c); } console.log('Calendar disabled.'); })()
-    : Promise.resolve(console.log('usage: worklog-calendar.js --setup [--env <path>] | --test | --sync [YYYY-MM-DD] | --disable'));
+    : Promise.resolve(console.log('usage: worklog-calendar.js --setup [--env <path>] | --test | --sync [YYYY-MM-DD] | --push [DATE] | --unpush [DATE] | --push-setup | --list-calendars | --disable'));
   Promise.resolve(run).catch((e) => { console.error('[worklog-calendar] error:', e.message); process.exit(1); });
 }

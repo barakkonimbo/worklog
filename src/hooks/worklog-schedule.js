@@ -47,6 +47,8 @@ function defaultConfig() {
       minBlockMinutes: 15, maxGapMinutes: 90,
       activityGapMinutes: 30, // per-prompt stamps farther apart than this start a new block
       tailMinutes: 10,        // each block runs this many minutes past its last stamp
+      pushCalendarId: 'primary', // target for `/worklog push` (full mirror); 'primary' = the user's own main calendar
+      autoPush: false,        // opt-in: also mirror to pushCalendarId during the end-of-day summary run
     },
   };
 }
@@ -69,6 +71,9 @@ function describe(config) {
   }
   if (c.calendar && c.calendar.enabled) {
     lines.push('• יומן Google: סנכרון יומי (סוף יום) ליומן "Work Journal"' + (c.calendar.summaryEvent === false ? ' — בלוקים בלבד' : ' — בלוקים + סיכום'));
+    if (c.calendar.autoPush) {
+      lines.push('• מירור אוטומטי: בסוף יום גם → "' + (c.calendar.pushCalendarId || 'primary') + '" (push)');
+    }
   } else {
     lines.push('• יומן Google: כבוי');
   }

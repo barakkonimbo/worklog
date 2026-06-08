@@ -143,6 +143,21 @@ function trySyncCalendar(dateStr) {
   } catch (e) { console.error('[worklog-summary] calendar sync skipped:', e.message); }
 }
 
+// Opt-in auto end-of-day mirror: when autoPush is on, ALSO copy the day to the user's chosen calendar
+// (pushCalendarId, default 'primary') — a full mirror, never replacing the private Work Journal. Spawned
+// separately so a failure can't break the summary/email/sync. worklog-calendar.js self-gates on autoPush.
+function tryPushCalendar(dateStr) {
+  try {
+    const script = path.join(__dirname, 'worklog-calendar.js');
+    if (!fs.existsSync(script)) return;
+    const r = spawnSync(process.execPath, [script, '--push', dateStr], {
+      encoding: 'utf8', windowsHide: true, timeout: 90000, env: { ...process.env },
+    });
+    if (r.stdout && r.stdout.trim()) console.log(r.stdout.trim());
+    if (r.status !== 0 && r.stderr) console.error('[worklog-summary] calendar push:', r.stderr.slice(0, 300));
+  } catch (e) { console.error('[worklog-summary] calendar push skipped:', e.message); }
+}
+
 // ---------- daily ----------
 // Catch-up bookkeeping: the date of the last day whose summary was actually emailed by a scheduled
 // run. Used to avoid re-sending a day, and to pick the right (possibly earlier) day to send.
@@ -183,7 +198,7 @@ function buildDailyPrompt(dateStr, content) {
 (לכל פרויקט שמופיע בלוג: כותרת ### עם שם הפרויקט, ותחתיה 1-4 בולטים של מה נעשה ברמת נושא)
 
 ## ציר זמן
-(בוקר / צהריים / אחה״צ / ערב — שורה לכל חלק שיש בו פעילות, נושאים עיקריים בלבד)
+(בוקר / צהריים / אחה״צ / ערב — שורה לכל חלק שיש בו פעילות, נושאים עיקריים בלבד; **בלי שעות/דקות**, רק חלק-היום והנושאים)
 
 ## בולטים
 (2-4 שורות: הישגים, החלטות, או דברים פתוחים שדורשים המשך)
@@ -236,6 +251,8 @@ function doDaily() {
   notifier.notify(title, previewOf(finalContent), out);
   // deliver run only: sync the day's blocks + summary to Google Calendar (fail-safe, self-gated)
   if (toCal) trySyncCalendar(lib.dateKey(date));
+  // opt-in: on a deliver run, also mirror the day to the user's own calendar (autoPush self-gates)
+  if (want.deliver && calendar.autoPushEnabled()) tryPushCalendar(lib.dateKey(date));
 }
 
 // ---------- weekly ----------

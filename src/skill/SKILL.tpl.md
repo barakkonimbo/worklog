@@ -1,6 +1,6 @@
 ---
 name: worklog
-description: Manual control of the global work-journal (יומן עבודה). Use when the user wants to log an entry by hand, see today's journal or status, generate the daily/weekly summary, send it now to email/calendar on demand, or change settings like the summary language. Triggers on "/worklog", "תרשום ביומן", "log this to the journal", "what did I do today", "show my work journal", "worklog status", "מצב היומן", "worklog help", "what can the work journal do", "אילו פקודות יש ביומן", "send the summary now", "שלח עכשיו", "generate today's summary now", "סיכום יום עכשיו", "סיכום שבועי", "change summary language", "שנה שפת סיכום", "update the work journal", "עדכן את היומן", "worklog update", "is there a new version". The automatic logging is handled by hooks; this skill is for explicit, on-demand actions.
+description: Manual control of the global work-journal (יומן עבודה). Use when the user wants to log an entry by hand, see today's journal or status, generate the daily/weekly summary, send it now to email/calendar on demand, or change settings like the summary language. Triggers on "/worklog", "תרשום ביומן", "log this to the journal", "what did I do today", "show my work journal", "worklog status", "מצב היומן", "worklog help", "what can the work journal do", "אילו פקודות יש ביומן", "send the summary now", "שלח עכשיו", "generate today's summary now", "סיכום יום עכשיו", "סיכום שבועי", "change summary language", "שנה שפת סיכום", "update the work journal", "עדכן את היומן", "worklog update", "is there a new version", "mirror my day to my calendar", "תעביר את היום ליומן שלי", "push to my calendar", "worklog push". The automatic logging is handled by hooks; this skill is for explicit, on-demand actions.
 ---
 
 # Work Journal — manual control
@@ -91,6 +91,23 @@ the user to refresh that folder (extract the new zip / pull the catalog) if they
   `worklog-calendar.js --setup`), guide the user to run it in their OWN terminal — do NOT run setup yourself.
 - A normal update touches NO credentials and asks for nothing; reassure the user of that if they worry.
 - Preview without applying: add `--check` (dry run). Override the source folder: `--source <path>`.
+- If the update introduces the calendar-mirror feature (push / auto end-of-day mirror) and it isn't set up
+  yet, **offer it** (see §10) — and ALWAYS clarify it does NOT replace the Work Journal calendar.
+
+## 10. Mirror today to your own calendar — `push` / `unpush`
+For "mirror/share my day to my calendar" / "תעביר את היום ליומן שלי" / "push to my calendar". Makes a
+**full copy** of the day's blocks + summary onto the user's chosen calendar (default their **primary**),
+**in addition** to the private "Work Journal" calendar — it never replaces it. Idempotent (re-running replaces).
+- Push today:   `"<NODE>" "<HOOKS>/worklog-calendar.js" --push`   (append a date for another day: `--push YYYY-MM-DD`)
+- Remove today: `"<NODE>" "<HOOKS>/worklog-calendar.js" --unpush`
+- Touches ONLY `worklog`-tagged events on the target — never the user's real meetings. No re-summarize, no AI.
+- **Choosing the target (other than primary):** run `"<NODE>" "<HOOKS>/worklog-calendar.js" --list-calendars`,
+  show the user the list, then set their pick with `"<NODE>" "<HOOKS>/worklog-config.js" push.calendar <id|primary>`.
+  (In a real terminal they can use the interactive picker `worklog-calendar.js --push-setup`.)
+- **Auto end-of-day mirror (opt-in, OFF by default):** `"<NODE>" "<HOOKS>/worklog-config.js" autopush on` makes
+  every end-of-day summary run ALSO mirror to the target. When offering/enabling it, ALWAYS say: *this does NOT
+  replace your Work Journal calendar — it only ALSO mirrors the finalized day to your own calendar.* `primary`
+  resolves per-user (each person's own main calendar).
 
 ## Notes
 - Terminal users can drive everything via one dispatcher instead of remembering each script:

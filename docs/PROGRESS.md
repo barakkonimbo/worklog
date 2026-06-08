@@ -27,6 +27,7 @@
 | עדכון מקומי (`/worklog update`) | ✅ נבנה ואומת (v0.8.0) — זיהוי לפי content-manifest (לא רק גרסה), הסבר מ-`upgrade-notes.json`, סימון פעולות; creds לא נוגעים |
 | Dispatcher לטרמינל (`worklog.js`) | ✅ נבנה ואומת (v0.8.0) — פקודה אחת לכל הפעלים; `help` מציג מיפוי צ'אט↔טרמינל |
 | הקשחת פרסר-רשומות (סובלני ל-reformat) | ✅ נבנה ואומת (v0.8.0) — matcher משותף `[-*]`+`\\[` ב-5 אתרים; מונע ספירה-0 / דילוג-יום אחרי format-on-save |
+| מירור היום ליומן המשתמש (push/unpush + autoPush) | ✅ נבנה ואומת (v0.8.2) — מירור מלא ליעד (primary כברירת מחדל), opt-in auto בסוף-יום; לא מחליף את Work Journal |
 | תמיכה ב-macOS/Linux (תזמון) | ⏳ לא התחיל |
 
 ---
@@ -47,6 +48,18 @@
 ---
 
 ## 🗓️ לוג כרונולוגי
+
+### 2026-06-08 — מירור היום ליומן שלך (push/unpush + autoPush) + תיקון ציר-זמן (v0.8.2)
+**נעשה:**
+- **`/worklog push [date]` / `unpush`** — **מירור מלא** של היום (בלוקים + סיכום, ללא סינון) ליומן-היעד של המשתמש, **בנוסף** ל-Work Journal הפרטי (לא מחליף). אידמפוטנטי דרך תג `worklog=<date>` (לחיצה חוזרת = מחליף); נוגע **רק** באירועי-worklog ביעד, לא בפגישות אמיתיות; בלי claude. `unpush` מסיר. `syncDay` קיבל פרמטר `calId` (ברירת מחדל = Work Journal; push = היעד).
+- **`calendar.autoPush`** (opt-in, כבוי) — בריצת **רצף סיכום-היום** (כש-`want.deliver`) מתבצע גם מירור ליעד; נכון-לאותו-רגע. `worklog-summary` קורא `tryPushCalendar` (spawn נפרד, fail-safe) כש-`calendar.autoPushEnabled()`.
+- **יעד = `calendar.pushCalendarId`, ברירת מחדל `primary`** (פר-משתמש — היומן הראשי של כל אחד; אצל חבר צוות זה שלו, לא barak daniel). **פתרון לפער:** ברירת מחדל primary ⇒ push ידני **תמיד עובד** גם בלי setup. בחירת יומן אחר: `--push-setup` (תפריט אינטראקטיבי) או `--list-calendars` + `push.calendar <id|primary>` (זרימת הסקיל). ה-OAuth scope המלא הקיים מספיק — אין setup מחדש.
+- **הצעה opt-in ב-update/install** (דרך הסקיל): מציעים את הפיצ'ר עם המסר המפורש *"לא מחליף את Work Journal, רק מוסיף מירור ליומן שלך"*.
+- **תיקון קטן (בקשת משתמש):** "ציר זמן" בסיכום היומי — בוקר/צהריים/ערב **בלי שעות/דקות** בסוגריים.
+- **חיווט:** סקיל §10 + dispatcher (`worklog.js push|unpush`) + `worklog-config.js` (`push.calendar`/`autopush`, status מציג מירור) + help.
+- **נבדק (לא-הרסני):** build + syntax 15/15 + JSON · config round-trip (autopush on→status→off) · `--list-calendars` חי (token רואה את כל היומנים, primary=barakd). **לא הורץ push חי** (כדי לא לכתוב ל-barak daniel בלי בקשה). הותקן חי 0.8.2. D22.
+
+**הבא:** push/ship לשני הריפו.
 
 ### 2026-06-08 — תיקון מיזוג בלוקי-יומן: קיבוץ פר-פרויקט (v0.8.1)
 **הבאג (תפס אותו המשתמש מצילומי היומן):** חותמות-פעילות של **אותו פרויקט** בטווח <30ד׳ זו מזו לא התאחדו — turk הופיע כהמון בלוקים זעירים (2:09, 2:24, 2:34...). **שורש:** `streaksOfActivity` בנה רצפים **רציפים-גלובלית** — חותמת של פרויקט אחר *בין* שתי חותמות turk שברה את רצף ה-turk. כך השתלבות (interleaving) turk↔someSkills פיצצה כל פרויקט להרבה בלוקים.

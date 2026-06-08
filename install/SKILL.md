@@ -62,6 +62,17 @@ guide them — do NOT run it for them (browser consent needed):
 3. Test: `node "%USERPROFILE%\.claude\hooks\worklog-calendar.js" --test`.
 Sync runs on **every session close** (the calendar is a continuously-updated mirror — late work after 20:30 still lands in it) and at the 20:30 run (which also refreshes the summary event). See INSTALL.md for the full guide.
 
+## After install — offer mirroring to their own calendar (optional, needs Calendar enabled)
+Only relevant if Google Calendar is set up. The default keeps everything on the **private "Work Journal"**
+calendar (not their main one). If they want, the day can ALSO be mirrored to their own calendar (e.g. their
+primary), manually (`/worklog push`) or automatically at end-of-day. When you offer it, **state its name +
+that it is OPT-IN, and ALWAYS clarify: this does NOT replace the Work Journal calendar — it only ALSO mirrors
+the day to the calendar they choose.** If interested:
+1. List their calendars: `node "<HOOKS>/worklog-calendar.js" --list-calendars` → show them, ask which.
+2. Set the target: `node "<HOOKS>/worklog-config.js" push.calendar <id|primary>` (default `primary` = their own main calendar, per-user).
+3. For automatic end-of-day mirroring: `node "<HOOKS>/worklog-config.js" autopush on` (default OFF).
+   (In their own terminal they can instead run the interactive picker `worklog-calendar.js --push-setup`.)
+
 ## Change settings later
 Map the user's intent to `worklog-config.js` (each change re-registers the tasks automatically):
 `email off` / `email on` · `calendar off` / `calendar on` · `email.time 21:00` · `email.days Sun-Thu` ·

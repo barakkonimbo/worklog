@@ -107,11 +107,15 @@ function help() {
 • עדכון מהתיקייה המקומית (בודק תוכן · מסביר · מסמן פעולות)
     צ'אט:    /worklog update
     טרמינל:  ${w('update')}    (תצוגה בלבד: ${w('update --check')})
+• מירור היום ליומן שלך (push) / הסרה (unpush) — מירור מלא, לא מחליף את Work Journal
+    צ'אט:    /worklog push  ·  /worklog unpush
+    טרמינל:  ${w('push')}  ·  ${w('unpush')}    (בחירת יומן-יעד: ${q('worklog-calendar.js')} --push-setup)
 • הגדרות (מייל/יומן/שבועי/שפה)
     צ'אט:    "כבה מייל" · "תשלח ב-21:00" · "שבועי ביום ה׳" · "שפה לאנגלית"
     טרמינל:  ${w('email on|off')} · ${w('email.time 21:00')} · ${w('email.days Sun-Thu')}
              ${w('weekly on|off')} · ${w('weekly.day Sunday')} · ${w('weekly.time 08:00')}
              ${w('calendar on|off')} · ${w('language English')}
+             ${w('autopush on|off')} · ${w('push.calendar primary')}  (מירור אוטומטי ליומן שלך בסוף יום)
 • עזרה (המסך הזה)
     צ'אט:    /worklog help
     טרמינל:  ${w('help')}
@@ -147,6 +151,13 @@ function applyChange(c, key, val) {
       return true;
     case 'calendar.summary':
       if (on(val)) c.calendar.summaryEvent = true; else if (off(val)) c.calendar.summaryEvent = false; else return false;
+      return true;
+    case 'push.calendar': // target for /worklog push: 'primary' or a calendar ID (name-picking is --push-setup)
+      if (!val || !String(val).trim()) return false;
+      c.calendar.pushCalendarId = String(val).trim();
+      return true;
+    case 'autopush': // opt-in auto end-of-day mirror to pushCalendarId (defaults to 'primary' target)
+      if (on(val)) c.calendar.autoPush = true; else if (off(val)) c.calendar.autoPush = false; else return false;
       return true;
     case 'language':
       if (!val || !String(val).trim()) return false;

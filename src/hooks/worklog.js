@@ -13,6 +13,7 @@
  *   node worklog.js summary | week        generate today's / this week's summary
  *   node worklog.js send [email|calendar] deliver now to enabled target(s)
  *   node worklog.js update [--check]      update from the local setup folder
+ *   node worklog.js push | unpush [DATE]  mirror the day to your own calendar / remove it
  *   node worklog.js help                  full command list
  *   node worklog.js email off | weekly.day Sunday | language English | ...   settings (pass-through)
  */
@@ -53,6 +54,8 @@ switch (verb) {
     run('worklog-summary.js', ['--daily', '--deliver', ...only]);
   }
   case 'update': run('worklog-update.js', rest);
+  case 'push': run('worklog-calendar.js', ['--push', ...rest]);
+  case 'unpush': run('worklog-calendar.js', ['--unpush', ...rest]);
   case 'log': {
     if (rest.includes('--msg')) run('worklog-log.js', rest); // already explicit
     const proj = [];
