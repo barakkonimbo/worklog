@@ -1,6 +1,6 @@
 # מדריך — שליחה ובדיקה אצל חבר צוות (Windows)
 
-מדריך תפעולי: מה לשלוח ואיך להדריך. גרסה נוכחית: **0.7.5**.
+מדריך תפעולי: מה לשלוח ואיך להדריך. גרסה נוכחית: **0.7.6**.
 
 ---
 
@@ -33,7 +33,7 @@ C:\Users\sarit\youleap\someSkills\work-journal\dist\work-journal-setup.zip
 ---
 
 ## חלק 3 — איך לוודא שעבד (אצל החבר)
-1. **hooks הותקנו:** `Get-ChildItem "$env:USERPROFILE\.claude\hooks\worklog-*.js"` → 12 קבצים.
+1. **hooks הותקנו:** `Get-ChildItem "$env:USERPROFILE\.claude\hooks\worklog-*.js"` → 13 קבצים.
 2. **המשימה נרשמה:** `Get-ScheduledTask -TaskName "WorkJournal-*"` → לפחות `WorkJournal-Notify` (Ready).
    (אם הפעיל מייל — גם `WorkJournal-DailyEmail` ו-`WorkJournal-Weekly`.)
 3. **בדיקה חיה:** ב**סשן חדש** → `/worklog "בדיקת התקנה"` → `/worklog show` → הרשומה מופיעה.

@@ -42,7 +42,12 @@ function defaultConfig() {
       time: '20:30', days: ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday'],
     },
     weekly: { enabled: true, day: 'Sunday', time: '08:00' },
-    calendar: { enabled: false, calendarId: '', summaryEvent: true, minBlockMinutes: 15, maxGapMinutes: 90 },
+    calendar: {
+      enabled: false, calendarId: '', summaryEvent: true,
+      minBlockMinutes: 15, maxGapMinutes: 90,
+      activityGapMinutes: 30, // per-prompt stamps farther apart than this start a new block
+      tailMinutes: 10,        // each block runs this many minutes past its last stamp
+    },
   };
 }
 

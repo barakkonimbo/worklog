@@ -36,6 +36,11 @@ const onlyIdx = argv.indexOf('--only');
 const only = onlyIdx >= 0 ? String(argv[onlyIdx + 1] || '').toLowerCase() : null;
 const deliverEmail = want.deliver && only !== 'calendar';
 const deliverCalendar = want.deliver && only !== 'email';
+// A scheduled run (the DailyEmail task passes --email) uses catch-up + last-sent tracking, so a
+// missed 18:00/20:30 (machine off) is delivered the next morning for the day it actually covers.
+// A manual `send` (--deliver) always targets today and never gates on last-sent — an on-demand
+// send is intentional and must always go out.
+const scheduledEmail = argv.includes('--email');
 let baseDate = lib.now();
 const di = argv.indexOf('--date');
 if (di >= 0 && argv[di + 1]) {
@@ -141,17 +146,35 @@ function trySyncCalendar(dateStr) {
 }
 
 // ---------- daily ----------
-function doDaily() {
-  const file = lib.dailyFile(baseDate);
-  const out = lib.summaryFile(baseDate);
-  const content = lib.readIf(file).trim();
-  const dateStr = `${lib.dateKey(baseDate)} (${lib.hebDow(baseDate)})`;
-  if (!content) {
-    write(out, `# סיכום יום — ${dateStr}\n\n_לא תועדה פעילות היום._\n`);
-    return;
+// Catch-up bookkeeping: the date of the last day whose summary was actually emailed by a scheduled
+// run. Used to avoid re-sending a day, and to pick the right (possibly earlier) day to send.
+const LAST_SENT = path.join(lib.ROOT, '.email-last-sent');
+function readLastSent() { return (lib.readIf(LAST_SENT) || '').trim() || null; }
+function writeLastSent(dk) { try { fs.writeFileSync(LAST_SENT, dk + '\n', 'utf8'); } catch { /* non-fatal */ } }
+function addDays(d, n) { const x = new Date(d); x.setDate(x.getDate() + n); return x; }
+// Does this day's raw log have at least one real entry?
+function hasEntries(d) { return /^- \d{2}:\d{2} \[[^\]]+\] /m.test(lib.readIf(lib.dailyFile(d))); }
+// "Fresh" = the summary exists and is newer than its log → nothing changed since it was written,
+// so we can reuse it instead of paying for another AI run.
+function summaryFresh(d) {
+  try { return fs.statSync(lib.summaryFile(d)).mtimeMs >= fs.statSync(lib.dailyFile(d)).mtimeMs; }
+  catch { return false; }
+}
+// For a SCHEDULED email run with no explicit --date: the most recent day with activity that wasn't
+// emailed yet (today, else yesterday). So a 18:00/20:30 run missed because the machine was off is
+// caught up next morning by sending YESTERDAY — the day it actually covers — not the empty new day.
+// Returns a Date, or null when there's nothing new to send.
+function pickDeliverDay() {
+  const lastSent = readLastSent();
+  for (const d of [baseDate, addDays(baseDate, -1)]) {
+    const dk = lib.dateKey(d);                          // ISO key compares chronologically as a string
+    if (hasEntries(d) && (!lastSent || dk > lastSent)) return d;
   }
-  const prompt =
-`${langLine}
+  return null;
+}
+
+function buildDailyPrompt(dateStr, content) {
+  return `${langLine}
 
 אתה כותב סיכום-יום למפתח, על בסיס לוג העבודה הגולמי שלו, ברמת-על — מה נעשה, מתי, באיזה נושא ופרויקט — בלי פרטים טכניים זעירים.
 
@@ -172,16 +195,49 @@ function doDaily() {
 --- הלוג הגולמי של ${dateStr} ---
 ${content}
 --- סוף הלוג ---`;
-  const ai = claudeSummarize(prompt);
-  const finalContent = ai || fallbackSummary(`סיכום יום — ${dateStr}`, [{ content }]);
-  write(out, finalContent);
+}
+
+function doDaily() {
+  // Pick the day to work on. A SCHEDULED email run with no explicit --date catches up the latest
+  // unsent day with activity; everything else (manual send, interim notify, explicit --date) is baseDate.
+  let date = baseDate;
+  if (scheduledEmail && di < 0) {
+    const t = pickDeliverDay();
+    if (!t) { console.log('[worklog-summary] nothing new to email — already up to date'); return; }
+    date = t;
+  }
+  const out = lib.summaryFile(date);
+  const content = lib.readIf(lib.dailyFile(date)).trim();
+  const dateStr = `${lib.dateKey(date)} (${lib.hebDow(date)})`;
+  if (!content) {
+    // A scheduled run with no content was already filtered out by pickDeliverDay; only a plain
+    // (non-deliver) run writes the "nothing logged" placeholder for today.
+    if (!want.deliver) write(out, `# סיכום יום — ${dateStr}\n\n_לא תועדה פעילות היום._\n`);
+    return;
+  }
+
+  // Skip re-summarizing when nothing changed: reuse the existing summary if it's newer than the log
+  // (e.g. the 18:00 Notify already summarized this day, and the 20:30 email run just needs to deliver).
+  let finalContent;
+  if (summaryFresh(date)) {
+    finalContent = lib.readIf(out).trim() || fallbackSummary(`סיכום יום — ${dateStr}`, [{ content }]);
+    console.log('[worklog-summary] summary already up to date — reusing', out);
+  } else {
+    const ai = claudeSummarize(buildDailyPrompt(dateStr, content));
+    finalContent = ai || fallbackSummary(`סיכום יום — ${dateStr}`, [{ content }]);
+    write(out, finalContent);
+  }
+
   const emailed = deliverEmail && emailer.emailEnabled() ? emailer.sendSummary('סיכום יום — ' + dateStr, finalContent) : false;
+  // Only a scheduled run advances last-sent (a manual send must not block the scheduled delivery of
+  // the fuller end-of-day summary).
+  if (emailed && scheduledEmail) writeLastSent(lib.dateKey(date));
   const toCal = deliverCalendar && calendar.calendarEnabled();
   const tags = (emailed ? ' · 📧 נשלח למייל' : '') + (toCal ? ' · 🗓️ יומן' : '');
   const title = (want.deliver ? '📓 סיכום היום (סופי)' : '📓 סיכום היום מוכן') + ' — ' + dateStr + tags;
   notifier.notify(title, previewOf(finalContent), out);
   // deliver run only: sync the day's blocks + summary to Google Calendar (fail-safe, self-gated)
-  if (toCal) trySyncCalendar(lib.dateKey(baseDate));
+  if (toCal) trySyncCalendar(lib.dateKey(date));
 }
 
 // ---------- weekly ----------

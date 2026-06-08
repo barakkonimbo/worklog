@@ -1,5 +1,16 @@
 {
-  "_comment": "תבנית עבור ה-installer. ה-installer ממזג את הערכים האלה ל-~/.claude/settings.json: את קבוצת SessionStart מוסיפים (append) למערך hooks.SessionStart הקיים; את SessionEnd יוצרים אם חסר, אחרת append. החלף {{NODE}} בנתיב node המקומי ו-{{HOOKS_DIR}} בתיקיית ה-hooks (למשל ~/.claude/hooks). מיזוג חייב להיות אידמפוטנטי — לזהות לפי שם הסקריפט ולא לשכפל.",
+  "_comment": "תבנית עבור ה-installer. ה-installer ממזג את הערכים האלה ל-~/.claude/settings.json: כל קבוצה מתווספת (append) למערך של אותו אירוע, ואם האירוע חסר הוא נוצר. החלף {{NODE}} בנתיב node המקומי ו-{{HOOKS_DIR}} בתיקיית ה-hooks (למשל ~/.claude/hooks). מיזוג חייב להיות אידמפוטנטי — לזהות לפי שם הסקריפט ולא לשכפל. UserPromptSubmit חותם פעילות לפני כל מענה (לבלוקי היומן) ואסור שיכתוב ל-stdout כדי לא להזריק קונטקסט.",
+  "UserPromptSubmit": [
+    {
+      "hooks": [
+        {
+          "type": "command",
+          "command": "\"{{NODE}}\" \"{{HOOKS_DIR}}/worklog-prompt.js\"",
+          "timeout": 5
+        }
+      ]
+    }
+  ],
   "SessionStart": [
     {
       "hooks": [
