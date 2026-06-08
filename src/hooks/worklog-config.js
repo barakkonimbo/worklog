@@ -99,7 +99,8 @@ function help() {
   ${q('worklog-config.js')}                  הצג הגדרות (ללא ארגומנט)
   ${q('worklog-config.js')} status           תמונת-מצב מאוחדת
   ${q('worklog-config.js')} email on|off · email.time 21:00 · email.days Sun-Thu
-  ${q('worklog-config.js')} calendar on|off · weekly off · weekly.day Sunday · weekly.time 08:00
+  ${q('worklog-config.js')} weekly on|off · weekly.day Sunday · weekly.time 08:00
+  ${q('worklog-config.js')} calendar on|off
   ${q('worklog-config.js')} language English      (ברירת מחדל: עברית)
   ${q('worklog-summary.js')} --daily|--weekly [--deliver] [--only email|calendar] [--date YYYY-MM-DD]
   ${q('worklog-email.js')} --setup | --test | --disable
