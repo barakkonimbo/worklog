@@ -54,20 +54,27 @@ function streaksOf(ents, maxGap) {
   return streaks;
 }
 
-// Split a (time-sorted) ACTIVITY list into streaks: consecutive same-project stamps within maxGap.
-// Like streaksOf, but stamps carry no message (time-only heartbeat), so there are no notes to gather.
-function streaksOfActivity(acts, maxGap) {
-  const streaks = [];
-  let cur = null;
+// Group time-only activity stamps into PER-PROJECT streaks: for each project independently, its stamps
+// (in time order) split into streaks where each gap to the previous SAME-project stamp is <= maxGap.
+// Crucially this is per-project, NOT global-consecutive (unlike streaksOf): hopping to another project
+// for a few minutes does NOT break a project's streak, as long as that project resumes within maxGap.
+// So "turk … someSkills … turk" within 30 min stays ONE turk block (+ a someSkills block), instead of
+// shattering turk into a block per stamp. Returns streaks sorted by start. Stamps carry no notes.
+function streaksByProjectActivity(acts, maxGap) {
+  const byProject = new Map();
   for (const a of acts) {
-    if (cur && a.project === cur.project && a.m - cur.lastM <= maxGap) {
-      cur.lastM = a.m;
-    } else {
-      cur = { project: a.project, firstM: a.m, lastM: a.m };
-      streaks.push(cur);
+    if (!byProject.has(a.project)) byProject.set(a.project, []);
+    byProject.get(a.project).push(a.m); // acts is pre-sorted by time → each list stays time-sorted
+  }
+  const streaks = [];
+  for (const [project, times] of byProject) {
+    let cur = null;
+    for (const m of times) {
+      if (cur && m - cur.lastM <= maxGap) cur.lastM = m;
+      else { cur = { project, firstM: m, lastM: m }; streaks.push(cur); }
     }
   }
-  return streaks;
+  return streaks.sort((a, b) => a.firstM - b.firstM || a.lastM - b.lastM);
 }
 
 // sessions:  [{start:"HH:MM", end:"HH:MM", project, sessionId?}]  (one day)
@@ -76,10 +83,11 @@ function streaksOfActivity(acts, maxGap) {
 // returns:   [{start, end, project, notes:[...]}] sorted by start
 //
 // Two models, picked automatically:
-//   • When per-prompt activity stamps exist (the normal case after install), THEY define block times:
-//     same-project stamps within `activityGap` (30 min) form one block, whose end is pushed `tail`
-//     (10 min) past the last stamp and clamped so it never overlaps the next block. Content entries
-//     only supply the notes; any entry not covered by an activity block still becomes its own block.
+//   • When per-prompt activity stamps exist (the normal case after install), THEY define block times,
+//     grouped PER PROJECT: a project's stamps within `activityGap` (30 min) of each other form one block
+//     (even if another project's stamps interleave in between), whose end is pushed `tail` (10 min) past
+//     the project's last stamp. Different projects are independent, so their blocks MAY overlap when work
+//     was interleaved. Content entries only supply notes; any entry not covered still becomes its block.
 //   • Otherwise (days before the activity hook existed, or it never fired) fall back to the legacy
 //     session-anchored, gap-trimmed model. Behavior there is unchanged.
 function computeBlocks(sessions, entries, opts = {}) {
@@ -105,16 +113,17 @@ function blocksFromActivity(activity, ents, { activityGap, tail, minBlock, maxGa
     .map((a) => ({ project: a.project || 'misc', m: toMin(a.time) }))
     .sort((a, b) => a.m - b.m);
 
-  const streaks = streaksOfActivity(acts, activityGap);
+  const streaks = streaksByProjectActivity(acts, activityGap);
   const covered = new Array(ents.length).fill(false);
   const raw = [];
 
-  streaks.forEach((st, i) => {
+  streaks.forEach((st) => {
     const startM = st.firstM;
-    let endM = st.lastM + tail;                           // extend the block past its last stamp
-    const next = streaks[i + 1];
-    if (next && endM > next.firstM) endM = next.firstM;   // but never overlap the following block
-    if (endM <= startM) return;                           // instant project switch -> no real duration
+    const endM = st.lastM + tail;                         // extend the block past its last stamp.
+    // No cross-project clamp: each project is independent, so different projects' blocks MAY overlap
+    // when work was interleaved (each project gets its own cube). Same-project streaks are >activityGap
+    // apart, so the tail (< activityGap) never makes one same-project block overlap the next.
+    if (endM <= startM) return;                           // instant -> no real duration
     // notes: same-project content entries that fall inside this block's window
     const notes = [];
     ents.forEach((e, j) => {
