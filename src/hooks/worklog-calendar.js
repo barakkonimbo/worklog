@@ -191,6 +191,16 @@ function parseSessions(dateStr) {
   }
   return out;
 }
+// Dense per-prompt activity stamps for a day (content-free heartbeats) — the primary source for blocks.
+function parseActivity(dateStr) {
+  const f = path.join(lib.SESSIONS, dateStr + '.activity.jsonl');
+  const out = [];
+  for (const ln of (lib.readIf(f) || '').split('\n')) {
+    if (!ln.trim()) continue;
+    try { const o = JSON.parse(ln); if (o.t) out.push({ time: o.t, project: o.project || 'misc' }); } catch { /* skip */ }
+  }
+  return out;
+}
 function dateObjOf(dateStr) { const [y, m, d] = dateStr.split('-').map(Number); return new Date(y, m - 1, d, 12, 0, 0); }
 function nextDateStr(dateStr) { const d = dateObjOf(dateStr); d.setDate(d.getDate() + 1); return lib.dateKey(d); }
 
@@ -207,7 +217,14 @@ async function syncDay(dateStr) {
 
   const entries = parseEntries(lib.readIf(lib.dailyFile(dObj)));
   const sessions = parseSessions(dateStr);
-  const blocks = computeBlocks(sessions, entries, { maxGap: cal.maxGapMinutes || 90, minBlock: cal.minBlockMinutes || 15 });
+  const activity = parseActivity(dateStr);
+  const blocks = computeBlocks(sessions, entries, {
+    maxGap: cal.maxGapMinutes || 90,
+    minBlock: cal.minBlockMinutes || 15,
+    activityGap: cal.activityGapMinutes || 30,   // split a day's stamps into blocks at gaps > this
+    tail: cal.tailMinutes != null ? cal.tailMinutes : 10, // extend each block past its last stamp
+    activity,
+  });
 
   const events = blocks.map((b) => ({
     summary: b.project,

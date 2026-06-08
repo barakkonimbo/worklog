@@ -10,7 +10,7 @@
  *   1. copies src/hooks/*.js            -> <claude>/hooks/
  *   2. installs the /worklog skill      -> <claude>/skills/worklog/SKILL.md   (paths substituted)
  *   3. merges the work-journal block    -> <claude>/CLAUDE.md                 (between markers)
- *   4. merges SessionStart+SessionEnd   -> <claude>/settings.json             (idempotent, backed up)
+ *   4. merges UserPromptSubmit+SessionStart+SessionEnd -> <claude>/settings.json (idempotent, backed up)
  *   5. registers scheduled summaries    -> Windows Task Scheduler (per config: 18:00 notify / 20:30 email+calendar / Sun weekly)
  *   6. ensures the journal data dir exists
  *
@@ -109,10 +109,11 @@ function main() {
   }
   settings.hooks = settings.hooks || {};
   const hookTpl = JSON.parse(subst(fs.readFileSync(path.join(SRC, 'templates', 'settings-hooks.json'), 'utf8')));
+  mergeHookEvent(settings, hookTpl, 'UserPromptSubmit', 'worklog-prompt.js');
   mergeHookEvent(settings, hookTpl, 'SessionStart', 'worklog-session-start.js');
   mergeHookEvent(settings, hookTpl, 'SessionEnd', 'worklog-session-end.js');
   fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2) + '\n', 'utf8');
-  log('settings.json: merged SessionStart + SessionEnd (existing hooks preserved)');
+  log('settings.json: merged UserPromptSubmit + SessionStart + SessionEnd (existing hooks preserved)');
 
   // 5. scheduling
   if (process.platform === 'win32') registerWindowsTasks();

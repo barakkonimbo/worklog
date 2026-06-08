@@ -62,7 +62,7 @@ if (fs.existsSync(settingsPath)) {
   catch (e) { console.error('  settings.json invalid JSON — skipping. ' + e.message); settings = null; }
   if (settings && settings.hooks) {
     fs.writeFileSync(settingsPath + '.bak', raw, 'utf8');
-    for (const [evt, script] of [['SessionStart', 'worklog-session-start.js'], ['SessionEnd', 'worklog-session-end.js']]) {
+    for (const [evt, script] of [['UserPromptSubmit', 'worklog-prompt.js'], ['SessionStart', 'worklog-session-start.js'], ['SessionEnd', 'worklog-session-end.js']]) {
       if (!Array.isArray(settings.hooks[evt])) continue;
       settings.hooks[evt] = settings.hooks[evt].filter((g) => {
         const hs = (g && g.hooks) || [];

@@ -13,10 +13,14 @@
 │  1) SessionStart hook  ──►  מזריק יומן היום+אתמול + הוראת תיעוד    │
 │     (worklog-session-start.js)   וכותב .sessions/<id>.json        │
 │                                                                   │
-│  2) במהלך הסשן: קלוד מריץ worklog-log.js בנקודות מפתח              │
-│     (מודרך ע"י ההזרקה + CLAUDE.md)                                │
+│  2) לפני כל prompt: UserPromptSubmit hook חותם זמן+פרויקט          │
+│     (worklog-prompt.js) → .sessions/<date>.activity.jsonl         │
+│     (שכבת פעילות — מזינה בלוקי-יומן מדויקים; לא נכנס לסיכום)        │
 │                                                                   │
-│  3) SessionEnd hook  ──►  אם לא תועד כלום → רשומת fallback         │
+│  3) במהלך הסשן: קלוד מריץ worklog-log.js בנקודות מפתח              │
+│     (מודרך ע"י ההזרקה + CLAUDE.md — שכבת תוכן → מזינה את הסיכום)   │
+│                                                                   │
+│  4) SessionEnd hook  ──►  אם לא תועד כלום → רשומת fallback         │
 │     (worklog-session-end.js)     ומנקה את ה-marker                │
 └─────────────────────────────────────────────────────────────────┘
                               │  כותבים אל
@@ -47,6 +51,7 @@
 - `dailyFile / summaryFile / weeklyFile` — בנאי נתיבים. `weeklyFile` משתמש ב-`isoWeekParts` (שבוע ISO-8601).
 - `projectFromCwd(cwd)` — הסגמנט אחרי `youleap/`, אחרת basename. ברירת מחדל `misc`.
 - `appendEntry({project, message, time})` — יוצר קובץ יום עם כותרת אם חסר, ומוסיף `- HH:MM [project] msg`.
+- `activityFile(d)` → `.sessions/<date>.activity.jsonl`; `appendActivity({project})` — מוסיף שורת `{t:"HH:MM",project}` (חותמת פעילות ללא תוכן; משמש את ה-UserPromptSubmit hook).
 
 ### `worklog-log.js` — CLI הוספת רשומה
 - פרסור: `--project/-p`, `--msg/-m`, וגם פוזיציוני (`project` אז `msg`).
@@ -59,6 +64,12 @@
 - בונה הקשר (≤ ~9500 תווים, מגבלת `additionalContext` היא 10k): הוראת תיעוד + הפקודה המדויקת
   (נבנית דינמית מ-`process.execPath` ו-`__dirname` → **ניתן-להעברה**) + יומן היום (≤6000) + אתמול (≤1500).
 - מחזיר `{"hookSpecificOutput":{"hookEventName":"SessionStart","additionalContext":"…"}}` ב-stdout, exit 0.
+
+### `worklog-prompt.js` — hook UserPromptSubmit (שכבת פעילות, v0.7.6)
+- רץ **לפני כל מענה**. **Recursion guard** זהה (`WORKLOG_DISABLE=1` → יוצא).
+- קורא stdin (`cwd`) → `lib.appendActivity({project: projectFromCwd(cwd)})` → שורה `{t,project}` ב-`.sessions/<date>.activity.jsonl`.
+- **חותמת זמן+פרויקט בלבד, ללא תוכן** — מזינה את בלוקי-היומן המדויקים (`computeBlocks`), ו**לא** את סיכום ה-AI (הפרדת שתי-שכבות: פעילות מול תוכן).
+- **קריטי:** לא כותב **כלום ל-stdout** (פלט UserPromptSubmit מוזרק כקונטקסט). מהיר (append סינכרוני), עטוף ב-try/catch — לעולם לא חוסם/נכשל prompt. Exit 0.
 
 ### `worklog-session-end.js` — hook SessionEnd (רשת ביטחון)
 - קורא stdin: `session_id, transcript_path, reason`. **Recursion guard** זהה.
@@ -102,8 +113,9 @@
 - בונה: `WorkJournal-Notify` (18:00 א׳–ה׳, קבוע) · `WorkJournal-DailyEmail` (אם email **או** calendar מופעלים) · `WorkJournal-Weekly` (אם email.enabled).
 
 ### `worklog-blocks.js` — חישוב בלוקים (טהור, 0 AI)
-- `computeBlocks(sessions, entries, {maxGap,minBlock})` → בלוקים מעוגני-סשנים, גזומי-פערים; ללא I/O; `dedupeSessions` ל-E5; `streaksOf` משותף.
-- **Fallback מבוסס-רשומות (v0.7.4):** רשומות שלא נופלות בתוך אף session עדיין הופכות לבלוקים (streaks לפי פרויקט+פער) — כך עבודה לא אובדת כש-session capture חלקי/חסר. (תוקן באג שזרק 92% מהעבודה כשנלכד רק סשן אחד.)
+- `computeBlocks(sessions, entries, {maxGap,minBlock,activity,activityGap,tail})` → בלוקים; ללא I/O; `dedupeSessions` ל-E5; `streaksOf`/`streaksOfActivity` + `mergeAndFormat` משותפים. **שני מסלולים, נבחרים אוטומטית:**
+- **מסלול פעילות (v0.7.6, ראשי כשיש חותמות):** חותמות-prompt צפופות (`opts.activity`) מגדירות את **זמני** הבלוקים — חותמות אותו-פרויקט בתוך `activityGap` (30ד׳) = בלוק אחד; סופו = חותמת-אחרונה + `tail` (10ד׳), **clamped** לתחילת הבלוק הבא כך שלעולם אין חפיפה. רשומות-התוכן מספקות רק `notes`; רשומה שלא מכוסה ע"י אף בלוק → בלוק fallback (לא הולך לאיבוד). **30=פיצול, 10=זנב (כפתורים נפרדים); אין Stop hook.**
+- **מסלול legacy (כשאין חותמות — ימים ישנים):** **מעוגן-סשנים, גזום-פערים** + **fallback מבוסס-רשומות (v0.7.4):** רשומות שלא נופלות בתוך אף session עדיין הופכות לבלוקים. (תוקן באג שזרק 92% מהעבודה כשנלכד רק סשן אחד.) ללא שינוי התנהגותי.
 
 ### `worklog-format.js` — המרת פורמט פר-יעד (v0.7.4, טהור)
 - `toHtml(md)` → HTML למייל (`-BodyAsHtml`): `#`→`<h2..h4>`, `- `→`<ul><li>`, `**`→`<b>`, עטיפת RTL.
@@ -113,7 +125,7 @@
 ### `worklog-calendar.js` — סנכרון Google Calendar (אופציונלי)
 - `--setup` (OAuth2 loopback, `--env`/prompt) · `--test` · `--sync [date]` · `--disable`.
 - Token `{client_id,client_secret,refresh_token}` מוצפן **DPAPI** ב-`.calendar-cred`; access token מתחדש בכל ריצה (REST, ללא npm).
-- `--sync`: סשני-היום + רשומות הלוג → `computeBlocks` → אירועי בלוק (timed) + "סיכום היום" (all-day, תיאור = **`toCalHtml`** של הסיכום) → **regenerate-and-replace** לפי תיוג `worklog=<date>`, ביומן הייעודי "Work Journal" בלבד.
+- `--sync`: חותמות-פעילות (`parseActivity`) + סשני-היום + רשומות הלוג → `computeBlocks` (פרמטרים מ-config: `activityGapMinutes`/`tailMinutes`/`maxGapMinutes`/`minBlockMinutes`) → אירועי בלוק (timed) + "סיכום היום" (all-day, תיאור = **`toCalHtml`** של הסיכום) → **regenerate-and-replace** לפי תיוג `worklog=<date>`, ביומן הייעודי "Work Journal" בלבד.
 - נקרא כ-`--sync` משני מקומות (spawn fail-safe): **`worklog-session-end.js`** בכל סגירת סשן (mirror מתמשך — בלוקים) ו-**`worklog-summary.js`** בריצת ה-20:30 (בלוקים + חידוש אירוע הסיכום). מקור המרווחים: `.sessions/<date>.jsonl`.
 
 ---
@@ -131,10 +143,15 @@
 
 **Marker** (`.sessions/<id>.json`): `{session_id, cwd, project, startDate, startTime, source}`.
 
+**מרווח-סשן** (`.sessions/<date>.jsonl`): שורת `{start, end, project, sessionId}` לכל סשן.
+
+**חותמת-פעילות** (`.sessions/<date>.activity.jsonl`, v0.7.6): שורת `{t:"HH:MM", project}` לכל prompt — שכבת הזמנים לבלוקים.
+
 ---
 
 ## נקודות אינטגרציה עם ה-harness
 
+- **UserPromptSubmit stdin**: `session_id, cwd, prompt, …`. הפלט ל-stdout (ב-exit 0) **מוזרק כקונטקסט** — לכן ה-hook שלנו לא מדפיס כלום. timeout קצר (5s).
 - **SessionStart stdin**: `session_id, transcript_path, cwd, permission_mode, source(startup|resume|clear|compact), model`.
 - **SessionStart הזרקה**: רק דרך `hookSpecificOutput.additionalContext` (≤10k תווים), exit 0.
 - **SessionEnd stdin**: `session_id, transcript_path, cwd, reason(clear|resume|logout|prompt_input_exit|bypass_permissions_disabled|other)`. לא-חוסם, לא מזריק הקשר.

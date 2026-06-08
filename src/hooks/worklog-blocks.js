@@ -54,18 +54,89 @@ function streaksOf(ents, maxGap) {
   return streaks;
 }
 
-// sessions: [{start:"HH:MM", end:"HH:MM", project, sessionId?}]  (one day)
-// entries:  [{time:"HH:MM", project, msg}]                       (one day)
-// returns:  [{start, end, project, notes:[...]}] sorted by start
+// Split a (time-sorted) ACTIVITY list into streaks: consecutive same-project stamps within maxGap.
+// Like streaksOf, but stamps carry no message (time-only heartbeat), so there are no notes to gather.
+function streaksOfActivity(acts, maxGap) {
+  const streaks = [];
+  let cur = null;
+  for (const a of acts) {
+    if (cur && a.project === cur.project && a.m - cur.lastM <= maxGap) {
+      cur.lastM = a.m;
+    } else {
+      cur = { project: a.project, firstM: a.m, lastM: a.m };
+      streaks.push(cur);
+    }
+  }
+  return streaks;
+}
+
+// sessions:  [{start:"HH:MM", end:"HH:MM", project, sessionId?}]  (one day)
+// entries:   [{time:"HH:MM", project, msg}]                       (one day; the CONTENT layer)
+// opts.activity: [{time:"HH:MM", project}]                        (one day; dense per-prompt stamps)
+// returns:   [{start, end, project, notes:[...]}] sorted by start
+//
+// Two models, picked automatically:
+//   • When per-prompt activity stamps exist (the normal case after install), THEY define block times:
+//     same-project stamps within `activityGap` (30 min) form one block, whose end is pushed `tail`
+//     (10 min) past the last stamp and clamped so it never overlaps the next block. Content entries
+//     only supply the notes; any entry not covered by an activity block still becomes its own block.
+//   • Otherwise (days before the activity hook existed, or it never fired) fall back to the legacy
+//     session-anchored, gap-trimmed model. Behavior there is unchanged.
 function computeBlocks(sessions, entries, opts = {}) {
   const maxGap = opts.maxGap != null ? opts.maxGap : 90;
   const minBlock = opts.minBlock != null ? opts.minBlock : 15;
+  const activityGap = opts.activityGap != null ? opts.activityGap : 30;
+  const tail = opts.tail != null ? opts.tail : 10;
+  const activity = opts.activity || [];
 
   const ents = (entries || [])
     .filter((e) => e && e.time)
     .map((e) => ({ project: e.project || 'misc', msg: e.msg || '', m: toMin(e.time) }))
     .sort((a, b) => a.m - b.m);
 
+  if (activity.length) return blocksFromActivity(activity, ents, { activityGap, tail, minBlock, maxGap });
+  return blocksFromSessions(sessions, ents, { maxGap, minBlock });
+}
+
+// Activity-stamp model (primary). Stamps drive the times; entries drive the notes.
+function blocksFromActivity(activity, ents, { activityGap, tail, minBlock, maxGap }) {
+  const acts = (activity || [])
+    .filter((a) => a && a.time)
+    .map((a) => ({ project: a.project || 'misc', m: toMin(a.time) }))
+    .sort((a, b) => a.m - b.m);
+
+  const streaks = streaksOfActivity(acts, activityGap);
+  const covered = new Array(ents.length).fill(false);
+  const raw = [];
+
+  streaks.forEach((st, i) => {
+    const startM = st.firstM;
+    let endM = st.lastM + tail;                           // extend the block past its last stamp
+    const next = streaks[i + 1];
+    if (next && endM > next.firstM) endM = next.firstM;   // but never overlap the following block
+    if (endM <= startM) return;                           // instant project switch -> no real duration
+    // notes: same-project content entries that fall inside this block's window
+    const notes = [];
+    ents.forEach((e, j) => {
+      if (e.project === st.project && e.m >= startM && e.m <= endM) { notes.push(e.msg); covered[j] = true; }
+    });
+    raw.push({ start: startM, end: endM, project: st.project, notes });
+  });
+
+  // entries with no covering activity block (e.g. a manual `worklog-log` when no prompt fired) still
+  // become blocks, so manually-logged work is never lost. Use the sparse content gap (maxGap) + minBlock.
+  const uncovered = ents.filter((_, j) => !covered[j]);
+  for (const st of streaksOf(uncovered, maxGap)) {
+    let startM = st.firstM;
+    const endM = st.lastM;
+    if (endM - startM < minBlock) startM = Math.max(0, endM - minBlock);
+    raw.push({ start: startM, end: endM, project: st.project, notes: st.notes.slice() });
+  }
+  return mergeAndFormat(raw);
+}
+
+// Session-anchored, gap-trimmed model (legacy fallback — unchanged behavior).
+function blocksFromSessions(sessions, ents, { maxGap, minBlock }) {
   const covered = new Array(ents.length).fill(false);
   const raw = [];
 
@@ -101,9 +172,12 @@ function computeBlocks(sessions, entries, opts = {}) {
     if (endM - startM < minBlock) startM = Math.max(0, endM - minBlock);
     raw.push({ start: startM, end: endM, project: st.project, notes: st.notes.slice() });
   }
+  return mergeAndFormat(raw);
+}
 
-  // merge same-project blocks that overlap or touch (handles back-to-back / concurrent same-project).
-  // NOTE: only merges when there is NO real gap (b.start <= last.end) — never bridges idle time.
+// merge same-project blocks that overlap or touch (handles back-to-back / concurrent same-project).
+// NOTE: only merges when there is NO real gap (b.start <= last.end) — never bridges idle time.
+function mergeAndFormat(raw) {
   raw.sort((a, b) => a.start - b.start || a.end - b.end);
   const merged = [];
   for (const b of raw) {
@@ -115,7 +189,6 @@ function computeBlocks(sessions, entries, opts = {}) {
       merged.push({ ...b, notes: b.notes.slice() });
     }
   }
-
   return merged.map((b) => ({ start: toHHMM(b.start), end: toHHMM(b.end), project: b.project, notes: b.notes }));
 }
 

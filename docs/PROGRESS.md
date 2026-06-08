@@ -20,8 +20,10 @@
 | מקור קנוני + תיעוד בפרויקט | ✅ הושלם |
 | Installer + הפצה (skill/zip, גרסאות) | ✅ הושלם ונבדק (אידמפוטנטי) |
 | הופץ לגיטהאב (dev repo + קטלוג) | ✅ worklog + youleap-Implementers/Features |
-| Google Calendar (opt-in, OAuth, DPAPI) | ✅ נבנה ואומת (v0.7.0); mirror מתמשך (v0.7.3); **fallback-רשומות + תיאור HTML** (v0.7.4) |
+| Google Calendar (opt-in, OAuth, DPAPI) | ✅ נבנה ואומת (v0.7.0); mirror מתמשך (v0.7.3); **fallback-רשומות + תיאור HTML** (v0.7.4); **בלוקים מבוססי-פעילות** (v0.7.6) |
 | ממשק on-demand (`send`/`status`/`help`/שפת-פלט) | ✅ נבנה ואומת — 18/18 בדיקות מבודדות (v0.7.2) |
+| שכבת פעילות (UserPromptSubmit → בלוקים מדויקים) | ✅ נבנה ואומת (v0.7.6) — חותמות זמן+פרויקט, פיצול 30ד׳ / זנב 10ד׳ |
+| Catch-up מייל + דילוג-סיכום | ✅ נבנה ואומת (v0.7.6) — מייל שפוספס נשלח למחרת ליום הנכון; אין סיכום-מחדש ללא שינוי |
 | תמיכה ב-macOS/Linux (תזמון) | ⏳ לא התחיל |
 
 ---
@@ -42,6 +44,17 @@
 ---
 
 ## 🗓️ לוג כרונולוגי
+
+### 2026-06-08 — שכבת פעילות לבלוקים מדויקים + catch-up מייל + דילוג-סיכום (v0.7.6)
+**נעשה (שתי משימות אוחדו ל-bump אחד):**
+- **שכבת פעילות (חדשה) — בלוקי-יומן מדויקים:** hook `UserPromptSubmit` חדש (`worklog-prompt.js`) חותם **זמן+פרויקט בלבד** (ללא תוכן) לפני כל מענה → `.sessions/<date>.activity.jsonl`. מהיר, fail-safe, **stdout ריק** (לא מזריק קונטקסט), מכבד `WORKLOG_DISABLE`. **עיצוב שתי-שכבות:** פעילות (זמנים → בלוקים) נפרדת מתוכן (נקודות-מפתח → סיכום), כדי לא להציף את ה-AI.
+- **`computeBlocks` — מסלול activity ראשי:** חותמות אותו-פרויקט בתוך `activityGap=30`ד׳ = בלוק; סוף = חותמת-אחרונה + `tail=10`ד׳, **clamp** שלא יחפוף לבלוק הבא; notes מהרשומות; רשומה לא-מכוסה → fallback. בלי חותמות → המסלול הישן (מעוגן-סשנים) ללא שינוי. **אין Stop hook** (חישוב טהור). 30=פיצול, 10=זנב (שני כפתורים נפרדים).
+- **Catch-up מייל (`worklog-summary.js`):** ריצה מתוזמנת (`--email`) שפוספסה (מכונה כבויה) נשלחת למחרת **עבור היום שפוספס** (חלון יומיים, `.email-last-sent`). שליחה ידנית (`send`/`--deliver`) → **תמיד היום, תמיד שולחת**, לא נחסמת מ-last-sent.
+- **דילוג-סיכום:** סיכום שלא השתנה (mtime) → שימוש חוזר ללא קריאת `claude` (אפס טוקנים).
+- **חיווט:** `worklog-prompt.js` ב-`settings-hooks.json` + `install.js` + הסרה גנרית ב-`uninstall.js`; ברירות-מחדל `activityGapMinutes:30`/`tailMinutes:10` ב-`worklog-schedule.js`/config.
+- **נבדק — 15/15:** יחידה לבלוקים (tail/split@30/exactly-30/clamp/notes/fallback/no-over-report/legacy) + e2e למייל ב-subprocess עם **fake-claude** (today/reuse/catch-up→אתמול/nothing-new/manual-תמיד-today) + hook ידני (stdout ריק/חותמת-ללא-תוכן/WORKLOG_DISABLE) + אינטגרציה מקצה-לקצה + syntax×8. D17, hook #13, bump 0.7.6.
+
+**הבא:** build + push לשני הריפו + התקנה חיה (הבלוקים המדויקים מתחילים להצטבר מהסשן הבא).
 
 ### 2026-06-07 — תיקון UX ב-installer setup (v0.7.5)
 **נעשה:**

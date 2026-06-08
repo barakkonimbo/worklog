@@ -31,6 +31,9 @@ const hebDow = (d) => HEB_DAYS[d.getDay()];
 
 const dailyFile = (d) => path.join(ROOT, `${dateKey(d)}.md`);
 const summaryFile = (d) => path.join(ROOT, `summary-${dateKey(d)}.md`);
+// Per-prompt activity stamps (one file per day, under .sessions/). Dense time-only heartbeat used
+// to compute accurate calendar blocks; carries NO content, so it never reaches the AI summary.
+const activityFile = (d) => path.join(SESSIONS, `${dateKey(d)}.activity.jsonl`);
 
 // ISO-8601 week number (Mon-based, week containing the year's first Thursday).
 function isoWeekParts(d) {
@@ -80,9 +83,19 @@ function readIf(f) {
   try { return fs.readFileSync(f, 'utf8'); } catch { return ''; }
 }
 
+// Append one per-prompt activity stamp to today's activity file. Tiny + append-only + content-free
+// (project + time only). Created with the journal dirs if missing. Used by the UserPromptSubmit hook.
+function appendActivity({ project }) {
+  ensureDirs();
+  const d = now();
+  const f = activityFile(d);
+  fs.appendFileSync(f, JSON.stringify({ t: timeKey(d), project: project || 'misc' }) + '\n', 'utf8');
+  return f;
+}
+
 module.exports = {
   ROOT, SESSIONS, ensureDirs, now, pad,
   dateKey, timeKey, hebDow,
-  dailyFile, summaryFile, weeklyFile, isoWeekParts,
-  projectFromCwd, appendEntry, readIf,
+  dailyFile, summaryFile, weeklyFile, isoWeekParts, activityFile,
+  projectFromCwd, appendEntry, appendActivity, readIf,
 };
