@@ -170,8 +170,7 @@ function main() {
 
   // Up to date: identical content (only trustworthy when we have a baseline manifest).
   if (instM && instM === availM) {
-    console.log('✓ עדכני — אין מה לעדכן.');
-    console.log('  (לגרסה חדשה: רענן את תיקיית work-journal-setup ואז הרץ שוב.)');
+    console.log('✓ עדכני — אין מה לעדכן' + (remoteBundle ? ' (כבר על הגרסה האחרונה מ-GitHub).' : '.'));
     return;
   }
 
