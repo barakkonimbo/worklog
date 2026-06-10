@@ -50,6 +50,13 @@ function defaultConfig() {
       pushCalendarId: 'primary', // target for `/worklog push` (full mirror); 'primary' = the user's own main calendar
       autoPush: false,        // opt-in: also mirror to pushCalendarId during the end-of-day summary run
     },
+    update: {
+      // Self-update pulls the latest shipped bundle straight from this repo (the catalog). Config-driven
+      // so relocating it (e.g. to a GitHub org) is a one-line change. See worklog-remote.js for defaults.
+      remote: 'https://github.com/barakkonimbo/youleap-Implementers.git',
+      branch: 'main',
+      auto: false, // daily check NOTIFIES by default; flip on to also apply updates automatically
+    },
   };
 }
 
@@ -78,6 +85,8 @@ function describe(config) {
     lines.push('• יומן Google: כבוי');
   }
   lines.push('• שפת הסיכום: ' + (c.language || 'עברית'));
+  const u = c.update || {};
+  lines.push('• עדכון: בדיקה יומית מ-GitHub · ' + (u.auto ? 'מתעדכן אוטומטית' : 'מתריע (עדכון ב-/worklog update)'));
   return lines.join('\n');
 }
 
@@ -107,8 +116,8 @@ function buildRegisterScript({ node, summaryScript, config }) {
     "$set=New-ScheduledTaskSettingsSet -StartWhenAvailable -ExecutionTimeLimit (New-TimeSpan -Minutes 15) -DontStopIfGoingOnBatteries -AllowStartIfOnBatteries -WakeToRun -RestartCount 3 -RestartInterval (New-TimeSpan -Minutes 5)",
     // full reset so toggling off actually removes tasks (and clears the legacy WorkJournal-Daily)
     'Unregister-ScheduledTask -TaskName ' + ALL_TASKS.map((t) => "'" + t + "'").join(',') + ' -Confirm:$false -ErrorAction SilentlyContinue',
-    // fixed interim notification (everyone)
-    task('WorkJournal-Notify', '--daily', '18:00', parseDays(['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday']), 'Interim daily summary + notification (18:00, Sun-Thu)'),
+    // fixed interim notification (everyone) — also runs the daily self-update check (--check-update)
+    task('WorkJournal-Notify', '--daily --check-update', '18:00', parseDays(['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday']), 'Interim daily summary + notification + update check (18:00, Sun-Thu)'),
   ];
   const emailOn = !!(c.email && c.email.enabled);
   const calOn = !!(c.calendar && c.calendar.enabled);

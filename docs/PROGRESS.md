@@ -25,7 +25,7 @@
 | ממשק on-demand (`send`/`status`/`help`/שפת-פלט) | ✅ נבנה ואומת — 18/18 בדיקות מבודדות (v0.7.2) |
 | שכבת פעילות (UserPromptSubmit → בלוקים מדויקים) | ✅ נבנה ואומת (v0.7.6) — חותמות זמן+פרויקט, פיצול 30ד׳ / זנב 10ד׳; **קיבוץ פר-פרויקט סובלני-להשתלבות (v0.8.1)** |
 | Catch-up מייל + דילוג-סיכום | ✅ נבנה ואומת (v0.7.6) — מייל שפוספס נשלח למחרת ליום הנכון; אין סיכום-מחדש ללא שינוי |
-| עדכון מקומי (`/worklog update`) | ✅ נבנה ואומת (v0.8.0) — זיהוי לפי content-manifest (לא רק גרסה), הסבר מ-`upgrade-notes.json`, סימון פעולות; creds לא נוגעים |
+| עדכון (`/worklog update`) | ✅ v0.8.0 לוקלי → **v0.9.0 עצמי מ-GitHub** — מושך לבד מהקטלוג (clone/fetch, git NON-interactive, fail-safe) + בדיקה יומית מתריעה/מעדכנת; content-manifest; creds לא נוגעים; config-driven remote |
 | Dispatcher לטרמינל (`worklog.js`) | ✅ נבנה ואומת (v0.8.0) — פקודה אחת לכל הפעלים; `help` מציג מיפוי צ'אט↔טרמינל |
 | הקשחת פרסר-רשומות (סובלני ל-reformat) | ✅ נבנה ואומת (v0.8.0) — matcher משותף `[-*]`+`\\[` ב-5 אתרים; מונע ספירה-0 / דילוג-יום אחרי format-on-save |
 | מירור היום ליומן המשתמש (push/unpush + autoPush) | ✅ נבנה ואומת (v0.8.2) — מירור מלא ליעד (primary כברירת מחדל), opt-in auto בסוף-יום; לא מחליף את Work Journal |
@@ -49,6 +49,17 @@
 ---
 
 ## 🗓️ לוג כרונולוגי
+
+### 2026-06-10 — עדכון עצמי מ-GitHub + בדיקה יומית (v0.9.0)
+**מה הניע:** המשתמש התנגד לכך ש-`/worklog update` דורש לרענן ידנית את תיקיית ה-setup ("אין דבר כזה לבקש מחברי צוות להוריד מחדש את הריפו"). המטרה: update שמושך לבד מ-GitHub + בדיקה יומית שמתריעה (ועם דגל — מעדכנת לבד).
+**החלטה מרכזית (D24):** המקור = **הקטלוג `youleap-Implementers`**, לא ריפו-הפיתוח — כי כל הצוות כבר עובד בקטלוג ביום-יום, אז git-auth כבר קיים ⇒ "git-creds מטמון" (אופציה A) עובד לכולם, בלי PAT ובלי לפרסם ציבורית. גם נכון אדריכלית (הקטלוג = נקודת-ההפצה, מכיל רק shipped).
+**נעשה:**
+- **`worklog-remote.js` (hook #15):** `refreshCache` — clone/fetch shallow של `update.remote`/`branch` ל-cache ייעודי, git NON-interactive (`GIT_TERMINAL_PROMPT=0`) → fail-safe, לא תוקע prompt. config-driven; re-clone על שינוי-remote (מסלול ה-org-move).
+- **`worklog-update.js`:** `pullRemote()` מרענן את ה-cache ומשתמש בו כמקור (עדיפות: GitHub → `--source` → תיקייה מקומית); `--notify` = בדיקה שקטה + toast/auto-apply; `--no-remote` לדילוג. כל לוגיקת ה-manifest/notes נשמרה.
+- **בדיקה יומית:** משימת ה-18:00 (Notify, רצה לכולם) מעבירה `--check-update`; `worklog-summary` משגר `worklog-update.js --notify` detached/fail-safe. ברירת מחדל מתריע; `update.auto on` ⇒ מעדכן לבד.
+- **config:** `update.{remote,branch,auto}` ב-defaultConfig + load/applyChange (`update.auto/remote/branch`) + describe + backfill ב-install. `update.remote` מאפשר מעבר ל-org בשינוי-שורה.
+**נבדק:** 6/6 מול ריפו-git לוקלי (ללא רשת/auth): clone · fetch-מעדכן · remote-לא-תקין→fail-safe · שינוי-remote→re-clone · `update --check` end-to-end. bump 0.9.0, D24. (ראה גם זיכרון org-migration pending.)
+**הבא:** build + deploy חי (אימות משיכה אמיתית מהקטלוג) + push לשני הריפו.
 
 ### 2026-06-10 — עמידוּת: חיסון המשימות + ריפוי-עצמי ב-SessionStart (v0.8.3)
 **מה הניע:** המשתמש שם לב שלסיכום של 2026-06-09 לא נוצר קובץ, לא נשלח מייל, ולא סונכרן ביומן — אף שהיו רשומות. **אבחון:** `WorkJournal-DailyEmail` כן רצה (18:14, התעוררה באיחור) אך הסתיימה ב-`0x8007042B` (`ERROR_PROCESS_ABORTED`) — נהרגה באמצע יצירת הסיכום. **שורש:** ברירות-המחדל של `New-ScheduledTaskSettingsSet` — `StopIfGoingOnBatteries`+`DisallowStartIfOnBatteries` (סוללה הורגת/חוסמת) ו-`RestartCount=0` (אין retry). הסיכום הוא השלב הראשון → נהרג → הכל נפל.

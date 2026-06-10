@@ -1,6 +1,6 @@
 # סיכום מלא — מה בנינו (Work Journal)
 
-> מסמך זה מסכם **בדיוק** מה נעשה בפיתוח מערכת ה-work-journal, נכון לגרסה **0.8.3** (2026-06-10).
+> מסמך זה מסכם **בדיוק** מה נעשה בפיתוח מערכת ה-work-journal, נכון לגרסה **0.9.0** (2026-06-10).
 > טכני עמוק → [ARCHITECTURE.md](./ARCHITECTURE.md) · הנמקות → [DECISIONS.md](./DECISIONS.md) · התקדמות → [PROGRESS.md](./PROGRESS.md).
 
 ---
@@ -50,7 +50,8 @@
 | `worklog-calendar.js` | סנכרון Google Calendar אופציונלי (OAuth2 loopback, REST); `--setup`/`--test`/`--sync`; **מירור ליומן המשתמש (v0.8.2):** `--push`/`--unpush`/`--push-setup`/`--list-calendars` + `autoPush`; תיאור-סיכום ב-**HTML** (`toCalHtml`); token מוצפן DPAPI |
 | `worklog-config.js` | מנוע הגדרות קל (email/calendar on/off, שעות, ימים, **שפה**) + **`status`** מאוחד + **`help`** (כל הפקודות) — כל שינוי רושם מחדש משימות |
 | `worklog-schedule.js` | רישום המשימות מתוך config (משותף; 20:30 נרשם אם email **או** calendar); **הגדרות מחוסנות** (v0.8.3: סוללה/wake/3×retry) דרך `buildRegisterScript` הטהור |
-| `worklog-update.js` | **עדכון מקומי (v0.8.0):** משווה content-manifest מול המותקן, מסביר מ-`upgrade-notes.json`, מסמן פעולות, ומריץ `install.js`. `--check`/`--source`. creds לא נוגעים |
+| `worklog-update.js` | **עדכון עצמי מ-GitHub (v0.9.0):** מושך לבד את החבילה מהקטלוג (דרך `worklog-remote.js`), משווה content-manifest, מסביר מ-`upgrade-notes.json`, ומריץ `install.js`. `--check`/`--notify`/`--no-remote`/`--source`. creds לא נוגעים |
+| `worklog-remote.js` | **שכבת מקור מרוחק (v0.9.0):** `refreshCache` — clone/fetch של הקטלוג ל-cache מקומי (shallow), git NON-interactive (`GIT_TERMINAL_PROMPT=0`), fail-safe. config-driven (`update.remote`); re-clone על שינוי-remote |
 | `worklog.js` | **Dispatcher לטרמינל (v0.8.0):** פקודה אחת `worklog.js <verb>` → מנתבת לכל הסקריפטים (status/show/send/summary/week/log/update/הגדרות) |
 
 **שילוב במערכת:** בלוק ב-`CLAUDE.md` · רשומות `SessionStart`+`SessionEnd` ב-`settings.json` (אדיטיבי,
@@ -100,10 +101,11 @@
 | **שכבת פעילות + catch-up + דילוג-סיכום (v0.7.6)** — 15/15: בלוקים (tail/split@30/clamp/notes/fallback/legacy), e2e מייל (catch-up→אתמול/nothing-new/manual-today), hook (stdout ריק/WORKLOG_DISABLE) | ✅ |
 | **עדכון מקומי + dispatcher + פרסר סובלני (v0.8.0)** — update 5/5 (שדרוג+notes/החלה/עדכני/שינוי-באותה-גרסה/אין-מקור), dispatcher (help/show/status/update/לא-מוכר), פרסר 5 קלטים; status חי חזר ל-9 | ✅ |
 | **עמידוּת — חיסון משימה + ריפוי-עצמי (v0.8.3)** — 12/12: דגלי-חיסון בפקודת הרישום, gating per-config, `findMissedDays` (אתמול/חלון/סדר/ריק), e2e backfill כותב סיכום חסר (claude-stub→fallback), אידמפוטנטיות, נעילת-cooldown | ✅ |
+| **עדכון עצמי מ-GitHub (v0.9.0)** — 6/6 מול ריפו-git לוקלי: clone, fetch-מעדכן, remote-לא-תקין→fail-safe, שינוי-remote→re-clone, `update --check` end-to-end (מושך→משווה→מדווח) | ✅ |
 
 ---
 
-## 6. סטטוס נוכחי (0.8.3)
+## 6. סטטוס נוכחי (0.9.0)
 
 - ✅ **פעיל ומאומת** אצל המשתמש + אצל חבר צוות אחד. ניתן להפצה (zip).
 - ✅ מייל, התראות-לחיצה, הגדרות-קלות, פיצול תזמון, **Google Calendar** (opt-in; **mirror מתמשך** — sync בכל סגירת סשן, מתעדכן גם אחרי 20:30), **וממשק on-demand** (`send`/`status`/`help`/בחירת שפה) — הכול עובד.
@@ -114,6 +116,7 @@
 - ✅ **v0.8.1:** תיקון בלוקי-יומן — **קיבוץ חותמות-פעילות פר-פרויקט** (סובלני להשתלבות): אותו פרויקט בטווח 30ד׳ מתאחד לבלוק אחד גם כשפרויקט אחר השתלב בין החותמות (קודם התפצל להמון בלוקים זעירים). אומת חי: 2026-06-08 ירד 18→11 בלוקים.
 - ✅ **v0.8.2:** **מירור היום ליומן המשתמש** — `/worklog push`/`unpush` (העתק מלא ליעד, ברירת מחדל `primary`, אידמפוטנטי, לא מחליף את Work Journal) + **`autoPush`** opt-in (מירור בסוף-יום). יעד נבחר ב-`--push-setup`/`--list-calendars`; ה-OAuth scope המלא מספיק. + תיקון: "ציר זמן" בסיכום בלי שעות/דקות.
 - ✅ **v0.8.3:** **עמידוּת.** המשימות לא נהרגות עוד על סוללה/שינה (גרם ל-`0x8007042B` → סיכום חצי-מיוצר, כלום לא נשלח), עם `WakeToRun` ו-3 ניסיונות חוזרים. + **ריפוי-עצמי** — בכל פתיחת סשן רץ ברקע `worklog-backfill.js`: יום עם רשומות אך בלי סיכום (מכונה הייתה כבויה/ישנה בשעת הריצה) מיוצר ונשלח אוטומטית (משלים מייל+יומן). `last-sent` הפך מונוטוני כדי שלא תהיה שליחה-חוזרת.
+- ✅ **v0.9.0:** **עדכון עצמי מ-GitHub.** `/worklog update` מושך לבד את הגרסה האחרונה מהקטלוג (clone/fetch ל-cache מקומי, git NON-interactive) — **אין יותר הורדת zip / משיכה ידנית**. בדיקה יומית (משימת ה-18:00) **מתריעה** כשיש גרסה חדשה, ועם `update.auto on` גם **מעדכנת לבד**. המקור config-driven (`update.remote`) → מעבר עתידי ל-org = שינוי URL אחד. fail-safe: אין git/אין רשת → התדרדרות בחן.
 - ⏳ **טרם:** תזמון cross-platform (mac/Linux); בחירת שעות בזמן ההתקנה; שיפורי E1/E3/E4 ביומן (Known Limitations); קיצור-CLI Tier 2 (פונקציית `$PROFILE`, opt-in).
 
 המשך וסדר עדיפויות → [PROGRESS.md](./PROGRESS.md).

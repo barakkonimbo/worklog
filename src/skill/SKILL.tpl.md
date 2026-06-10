@@ -80,17 +80,21 @@ to run it in their OWN terminal (PowerShell/cmd) — not via this skill:
   (Full step-by-step in the project's INSTALL.md.)
 
 ## 9. Update the system (`/worklog update`)
-For "update the work journal" / "עדכן את היומן" / "is there a new version". Updates from the locally
-refreshed setup folder (`<CLAUDE_CONFIG_DIR or ~/.claude>/skills/work-journal-setup/`) — so first remind
-the user to refresh that folder (extract the new zip / pull the catalog) if they haven't.
+For "update the work journal" / "עדכן את היומן" / "is there a new version". **Self-updating (v0.9.0):** it
+pulls the latest shipped bundle **straight from GitHub** (the catalog) into a local cache — **no manual
+zip/pull needed**. Just run it:
 `"<NODE>" "<HOOKS>/worklog-update.js"`
-- It compares a content manifest (not just the version number), so a same-version hotfix is caught too.
+- It clones/fetches the catalog (config `update.remote`, default the team catalog) and compares a content
+  manifest (not just the version), so a same-version hotfix is caught too. NON-interactive git — needs the
+  user's existing git access to the repo; if GitHub is unreachable it says so and falls back to a local folder.
 - If nothing differs it prints "עדכני — אין מה לעדכן" — relay that, done.
 - If it updates, it prints **what changed** and a "⚠️ דורש תשומת-לב" section. **Surface those items.** If any is
   marked **חובה (required)** and needs hidden input (e.g. re-running `worklog-email.js --setup` /
   `worklog-calendar.js --setup`), guide the user to run it in their OWN terminal — do NOT run setup yourself.
 - A normal update touches NO credentials and asks for nothing; reassure the user of that if they worry.
-- Preview without applying: add `--check` (dry run). Override the source folder: `--source <path>`.
+- Preview without applying: add `--check` (dry run). Skip the GitHub pull: `--no-remote`. Override the source: `--source <path>`.
+- **Daily auto-check:** the 18:00 task already checks GitHub and **toasts** when a new version exists. To make it
+  apply updates automatically: `"<NODE>" "<HOOKS>/worklog-config.js" update.auto on` (off = notify-only, default).
 - If the update introduces the calendar-mirror feature (push / auto end-of-day mirror) and it isn't set up
   yet, **offer it** (see §10) — and ALWAYS clarify it does NOT replace the Work Journal calendar.
 

@@ -158,6 +158,19 @@ function tryPushCalendar(dateStr) {
   } catch (e) { console.error('[worklog-summary] calendar push skipped:', e.message); }
 }
 
+// Daily self-update check (v0.9.0): the 18:00 task passes --check-update. Spawn worklog-update.js
+// --notify DETACHED + fail-safe so a slow/failing GitHub pull can never delay or break the summary.
+// It pulls the latest bundle and toasts if an update exists (auto-applies when update.auto is on).
+function tryUpdateCheck() {
+  try {
+    const script = path.join(__dirname, 'worklog-update.js');
+    if (!fs.existsSync(script)) return;
+    const { spawn } = require('child_process');
+    const child = spawn(process.execPath, [script, '--notify'], { detached: true, stdio: 'ignore', windowsHide: true });
+    child.unref();
+  } catch (e) { console.error('[worklog-summary] update check skipped:', e.message); }
+}
+
 // ---------- daily ----------
 // Catch-up bookkeeping: the date of the last day whose summary was actually emailed by a scheduled
 // run. Used to avoid re-sending a day, and to pick the right (possibly earlier) day to send.
@@ -314,3 +327,5 @@ ${body}
 
 if (want.daily) doDaily();
 if (want.weekly) doWeekly();
+// Daily self-update check piggybacks on the 18:00 interim run (only it passes --check-update).
+if (argv.includes('--check-update')) tryUpdateCheck();

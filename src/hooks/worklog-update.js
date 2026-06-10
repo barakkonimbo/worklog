@@ -1,17 +1,20 @@
 #!/usr/bin/env node
 /*
- * worklog-update.js — local-source updater for the Work Journal.
+ * worklog-update.js — self-updating updater for the Work Journal.
  *
- *   node worklog-update.js              check, then apply if the source folder differs from installed
+ *   node worklog-update.js              pull latest from GitHub, then apply if it differs from installed
  *   node worklog-update.js --check      report only (dry run) — never applies
- *   node worklog-update.js --source DIR override where the updated setup folder lives
+ *   node worklog-update.js --notify     silent daily check: toast if an update exists (auto-apply if update.auto)
+ *   node worklog-update.js --no-remote  skip the GitHub pull; use the local setup folder only
+ *   node worklog-update.js --source DIR override where the updated setup folder lives (implies --no-remote)
  *
- * Model (v1 = local): the "latest" comes from the bundled setup skill the user already refreshed
- * (new zip / catalog pull) at  <claude>/skills/work-journal-setup/. We compare a CONTENT manifest
- * (sha256 over the source `src/` tree + VERSION) against the manifest stamped at install time — so a
- * same-version hotfix or a hand-patch is detected too, not only a version bump. If it differs we print
- * what changed (from upgrade-notes.json) + any items needing the user's attention, then re-run the
- * idempotent install.js.
+ * Model (v2 = remote, v0.9.0): the "latest" is pulled straight from the distribution repo (the catalog)
+ * by worklog-remote.js into a local cache clone — NO manual "re-download the zip / pull the repo" step.
+ * We then compare a CONTENT manifest (sha256 over the source `src/` tree + VERSION) against the manifest
+ * stamped at install time — so a same-version hotfix or hand-patch is caught too, not only a version
+ * bump. If it differs we print what changed (from upgrade-notes.json) + any attention items, then re-run
+ * the idempotent install.js. If GitHub can't be reached (no creds/offline), we degrade gracefully:
+ * the interactive run falls back to a local folder if present; the daily --notify check stays silent.
  *
  * Credentials are NEVER touched: .email-cred / .calendar-cred (DPAPI-encrypted) live in the journal
  * dir, outside the source tree and outside install.js's scope. A normal update asks for nothing.
@@ -29,15 +32,30 @@ const fwd = (p) => String(p).replace(/\\/g, '/');
 
 const argv = process.argv.slice(2);
 const CHECK_ONLY = argv.includes('--check');
+const NOTIFY = argv.includes('--notify');
 function flagVal(name) { const i = argv.indexOf(name); return i >= 0 ? argv[i + 1] : null; }
 
-// Locate the refreshed setup folder (must hold both install.js and src/).
-function findSource() {
-  const cands = [flagVal('--source'), path.join(CLAUDE_DIR, 'skills', 'work-journal-setup')].filter(Boolean);
+// Locate the setup folder to update from (must hold both install.js and src/). The freshly-pulled
+// GitHub cache (when available) is preferred; then an explicit --source; then the local setup folder.
+function findSource(remoteBundle) {
+  const cands = [remoteBundle, flagVal('--source'), path.join(CLAUDE_DIR, 'skills', 'work-journal-setup')].filter(Boolean);
   for (const c of cands) {
     if (fs.existsSync(path.join(c, 'install.js')) && fs.existsSync(path.join(c, 'src'))) return c;
   }
   return null;
+}
+
+// Pull the latest bundle from GitHub into the local cache, unless explicitly disabled. Fail-safe:
+// returns the bundle path on success, or null (caller falls back to a local folder / stays silent).
+function pullRemote() {
+  if (argv.includes('--no-remote') || flagVal('--source')) return { bundle: null, info: null };
+  try {
+    const remote = require('./worklog-remote.js');
+    const info = remote.refreshCache();
+    return { bundle: info.ok ? info.bundlePath : null, info };
+  } catch (e) {
+    return { bundle: null, info: { ok: false, reason: 'remote-error', detail: e.message } };
+  }
 }
 
 const readTrim = (f) => { try { return fs.readFileSync(f, 'utf8').trim(); } catch { return null; } };
@@ -97,15 +115,48 @@ function applyInstall(srcRoot) {
   return r.status === 0;
 }
 
+// Silent daily check (spawned by the 18:00 task via --notify): pull from GitHub, and if a newer bundle
+// exists either toast "update available" or — when update.auto is on — apply it and toast "updated".
+// Stays completely quiet when up to date or when GitHub can't be reached (never nags).
+function notifyCheck() {
+  const { bundle, info } = pullRemote();
+  if (!bundle) return; // offline / no creds / no git → silent; the interactive run will surface it
+  const instM = installedManifest();
+  const availM = lib.computeManifest(bundle);
+  if (instM && instM === availM) return; // already up to date
+  const instV = installedVersion();
+  const availV = sourceVersion(bundle);
+  if (instV && availV && cmpVer(availV, instV) < 0) return; // remote somehow older → ignore
+  let notifier; try { notifier = require('./worklog-notify.js'); } catch { return; }
+  const auto = !!(info && require('./worklog-remote.js').gitConfig().auto);
+  if (auto) {
+    if (applyInstall(bundle)) {
+      notifier.notify('📦 Work Journal עודכן ל-' + (availV || '?'), 'העדכון הוחל אוטומטית — ייכנס לתוקף מהסשן הבא.', JOURNAL);
+    }
+  } else {
+    const v = instV && availV ? ' (' + instV + ' → ' + availV + ')' : '';
+    notifier.notify('📦 עדכון זמין ל-Work Journal' + v, 'הרץ /worklog update כדי לעדכן.', JOURNAL);
+  }
+}
+
 function main() {
+  if (NOTIFY) { notifyCheck(); return; }
+
   console.log('— Work Journal · עדכון —\n');
 
-  const src = findSource();
+  const { bundle: remoteBundle, info: remoteInfo } = pullRemote();
+  if (remoteBundle) {
+    console.log('  נמשך מ-GitHub ✓' + (remoteInfo && remoteInfo.head ? ' (' + remoteInfo.head + ')' : ''));
+  } else if (remoteInfo && !remoteInfo.ok && !argv.includes('--no-remote') && !flagVal('--source')) {
+    console.log('  ⚠️  לא הצלחתי למשוך מ-GitHub (' + remoteInfo.reason + ') — מנסה תיקייה מקומית.');
+  }
+
+  const src = findSource(remoteBundle);
   if (!src) {
-    console.log('✗ לא נמצאה תיקיית מקור לעדכון.');
-    console.log('  הנח את תיקיית ההתקנה המעודכנת ב:');
+    console.log('✗ לא נמצא מקור לעדכון (לא מ-GitHub ולא מקומי).');
+    if (remoteInfo && remoteInfo.detail) console.log('  פרט: ' + remoteInfo.detail);
+    console.log('  ודא שיש לך גישת git לקטלוג, או הנח תיקיית setup מעודכנת ב:');
     console.log('    ' + fwd(path.join(CLAUDE_DIR, 'skills', 'work-journal-setup')));
-    console.log('  (חלץ zip חדש או עדכן את ה-clone של הקטלוג), ואז הרץ שוב.');
     process.exit(2);
   }
 

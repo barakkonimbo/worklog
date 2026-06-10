@@ -154,6 +154,7 @@ function ensureConfigDefaults() {
     email: { ...d.email, ...(ex.email || {}) },
     weekly: { ...d.weekly, ...(ex.weekly || {}) },
     calendar: { ...d.calendar, ...(ex.calendar || {}) },
+    update: { ...d.update, ...(ex.update || {}) },
   };
   if (JSON.stringify(merged) === JSON.stringify(ex)) { log('config.json: already current (no new keys)'); return; }
   try { fs.writeFileSync(cfgPath + '.bak', JSON.stringify(ex, null, 2) + '\n', 'utf8'); } catch { /* non-fatal */ }

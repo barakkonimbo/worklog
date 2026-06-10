@@ -154,6 +154,16 @@ loopback, refresh token **מוצפן DPAPI** (כמו D11/D6). (ד) **טריגר 
 **מדוע ה-catch-up הקיים לא הספיק:** catch-up המייל (`pickDeliverDay`) מסתכל יום אחד אחורה בלבד ורק כשמייל מופעל; לסיכום-כקובץ ולסנכרון-היומן לא הייתה רשת עצמאית. שכבה 2 מכסה את שלושתם, בלי תלות בתזמון.
 **השלכה / בדיקות:** hook #14 (`worklog-backfill.js`). 12/12 בדיקות מבודדות (temp HOME + claude-stub נכשל→fallback, 0 טוקנים): דגלי-חיסון בפקודת הרישום · gating per-config · `findMissedDays` (אתמול/חלון/סדר/ריק) · e2e backfill כותב סיכום חסר · אידמפוטנטיות · נעילת-cooldown. **לקח:** משימה מתוזמנת על לפטופ היא best-effort — צריך גם רשת-ביטחון שמופעלת ע"י נוכחות המשתמש (סשן), לא רק ע"י שעון.
 
+## D24 — עדכון אוטומטי מ-GitHub (remote self-update) + בדיקה יומית
+**הקשר:** מודל ה-update עד 0.8.3 היה *לוקלי* — השווה מול תיקיית setup ש**המשתמש היה צריך לרענן ידנית** (zip/clone). זה הביס את כל הרעיון: "אין דבר כזה לבקש מחברי צוות להוריד מחדש את הריפו אחרי כל עדכון" (המשתמש). הדרישה: `update` שמושך לבד מ-GitHub, + בדיקה יומית שמתריעה (ועם דגל — מעדכנת לבד).
+**הנמקה / מה התברר בדיון:**
+- **מקור = הקטלוג `youleap-Implementers`, לא ריפו-הפיתוח `worklog`.** התובנה שהמשתמש נתן: *כל הצוות כבר עובד ב-`youleap-Implementers` ביום-יום* → לכולם כבר יש clone + git-auth עובד אליו. אז משיכה ממנו "פשוט עובדת" עם ה-credentials הקיימים — **בלי PAT, בלי לפרסם ציבורית**. ריפו-הפיתוח נגיש רק למשתמש; הקטלוג הוא נקודת-ההפצה ממילא (גם נכון אדריכלית). זה גם המקום שמכיל רק את ה-shipped (לא קוד-פיתוח) → בטוח.
+- **auth = git-creds מטמון, NON-interactive.** `worklog-remote.js` מריץ git עם `GIT_TERMINAL_PROMPT=0`/`GCM_INTERACTIVE=Never` → על מכונה ללא creds **נכשל מהר** במקום לתקוע prompt. כשל ⇒ התדרדרות בחן (interactive: נופל לתיקייה מקומית; daily check: שקט).
+- **cache clone ייעודי** (`~/.claude/work-journal/.src-cache`, shallow single-branch). update = clone (פעם ראשונה) או fetch+`reset --hard FETCH_HEAD`. אז ה-`--source` של ה-updater הקיים מצביע ל-`<cache>/Features/work-journal-setup`, וכל לוגיקת ה-manifest/notes נשארת — שכבת ה-remote רק *מרעננת את המקור*.
+- **config-driven (`update.remote`/`branch`/`auto`).** העברת הקטלוג ל-org בעתיד = שינוי URL אחד; על שינוי-remote ה-cache מזהה origin-mismatch ו**משכפל מחדש**. (ראה [[worklog-org-migration-pending]].)
+- **בדיקה יומית נטפלת על משימת ה-18:00** (Notify, שרצה לכולם ממילא — אפס wake נוסף): היא מעבירה `--check-update`, ו-`worklog-summary` משגר `worklog-update.js --notify` **detached/fail-safe**. ברירת מחדל **מתריע בלבד** (toast); `update.auto on` ⇒ מחיל לבד ומתריע "עודכן".
+**השלכה / בדיקות:** hook #15 (`worklog-remote.js`). 6/6 בדיקות מבודדות מול ריפו-git לוקלי (file path, ללא רשת/auth): clone · fetch-מעדכן · remote-לא-תקין→fail-safe · שינוי-remote→re-clone · `update --check` end-to-end (מושך→משווה→מדווח בלי להחיל). **לקח:** "עדכון אוטומטי" אמיתי דורש מקור מרוחק שכבר יש אליו גישה משותפת — בחירת *הקטלוג* (ולא ריפו-הפיתוח) כמקור פתרה גם את ה-auth וגם את האדריכלות בבת-אחת.
+
 ---
 
 ## מלכודות פתוחות / לשים לב בהמשך

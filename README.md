@@ -4,7 +4,7 @@
 פרויקט), ומפיקה **סיכום AI** — יומי ושבועי. עם **התראה לחיצה**, **מייל אופציונלי**, ו**סנכרון Google Calendar** (אופציונלי).
 הכול נשמר **מקומית** אצלך, באף שרת.
 
-`גרסה 0.8.3` · `Windows (mac/Linux חלקי)` · `ללא תלות חיצונית (Node + Claude CLI)`
+`גרסה 0.9.0` · `Windows (mac/Linux חלקי)` · `ללא תלות חיצונית (Node + Claude CLI + git לעדכון)`
 
 ---
 
@@ -103,7 +103,7 @@ work-journal/
 ├── docs/
 │   ├── SUMMARY.md         ← סיכום מלא: מה בנינו ולמה  ← התחל כאן
 │   ├── ARCHITECTURE.md    ← איך זה עובד (טכני, קובץ-קובץ)
-│   ├── DECISIONS.md       ← החלטות תכנון D1–D23 + מלכודות
+│   ├── DECISIONS.md       ← החלטות תכנון D1–D24 + מלכודות
 │   ├── PROGRESS.md        ← יומן התקדמות חי (מתעדכן כל סשן)
 │   ├── DISTRIBUTION.md    ← איך אורזים ומפיצים
 │   └── SEND-TO-TEAMMATE.md← מדריך תפעולי לשליחה ובדיקה אצל חבר צוות
@@ -113,7 +113,7 @@ work-journal/
 │   ├── install.js         ← installer נייד ואידמפוטנטי
 │   └── uninstall.js       ← הסרה (+--purge)
 ├── src/                   ← מקור קנוני (נפרס ל-~/.claude/)
-│   ├── hooks/             ← lib · log · prompt · session-start · session-end · summary · backfill · notify · email · config · schedule · blocks · calendar · format
+│   ├── hooks/             ← lib · log · prompt · session-start · session-end · summary · backfill · notify · email · config · schedule · blocks · calendar · format · update · remote
 │   ├── skill/SKILL.tpl.md ← skill /worklog (תבנית; install מחליף נתיבים)
 │   └── templates/         ← בלוק CLAUDE.md + רשומות hooks ל-settings.json
 └── dist/                  ← תוצר build: work-journal-setup/ + .zip (להפצה)
@@ -137,7 +137,9 @@ work-journal/
 ## הפצה
 
 `node build.js` → `dist/work-journal-setup/` + `dist/work-journal-setup.zip`. חבר צוות פורס ל-skills
-ומריץ `/work-journal-setup` (אידמפוטנטי, מציג `updating from X` בעדכון). פרטים → [docs/DISTRIBUTION.md](./docs/DISTRIBUTION.md).
+ומריץ `/work-journal-setup` (אידמפוטנטי, מציג `updating from X` בעדכון) — **פעם אחת**. מכאן ואילך
+`/worklog update` **מושך לבד את הגרסה האחרונה מ-GitHub** (v0.9.0) ובדיקה יומית מתריעה על גרסה חדשה — אין
+צורך להוריד שוב ידנית. פרטים → [docs/DISTRIBUTION.md](./docs/DISTRIBUTION.md).
 
 **ריפו פיתוח:** `barakkonimbo/worklog` · **מופץ בקטלוג:** `youleap-Implementers/Features/work-journal-setup/`.
 

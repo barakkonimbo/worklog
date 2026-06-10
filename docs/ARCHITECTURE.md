@@ -116,10 +116,17 @@
 - `help` — מדפיס **מיפוי צ'אט↔טרמינל** (כל פעולה: שורת `/worklog` + שורת `worklog.js` copy-paste). נקרא מ-`/worklog help`.
 - **פרסור רשומות** עבר ל-`lib.parseEntryLine` המשותף (v0.8.0) — `status` סובלני כעת ל-reformat של ה-markdown.
 
-### `worklog-update.js` — עדכון מקומי (v0.8.0)
-- מאתר את תיקיית ה-setup (`<claude>/skills/work-journal-setup/`, או `--source DIR`). משווה **content-manifest** (`lib.computeManifest` = `sha256` על `src/`+`VERSION`) מול `.installed-manifest` שנחתם ע"י `install.js` → תופס גם שינוי-תוכן באותה גרסה, לא רק bump.
-- זהה → "עדכני". מקור ישן יותר → מסרב downgrade. אחרת: מדפיס מה השתנה (מ-`upgrade-notes.json`, גרסאות `(installed, target]`) + סעיף "דורש תשומת-לב" (required/optional), ואז `spawnSync(install.js)` (אידמפוטנטי). דגלים: `--check` (dry-run), `--source`.
+### `worklog-update.js` — עדכון עצמי מ-GitHub (v0.9.0; היה מקומי ב-0.8.0)
+- **מושך לבד מ-GitHub:** `pullRemote()` קורא ל-`worklog-remote.js` לרענן cache clone של הקטלוג, וה-bundle שנמשך משמש כמקור. סדר עדיפות מקורות: cache מ-GitHub → `--source DIR` → תיקיית setup מקומית. `--no-remote` מדלג על המשיכה. כשל-משיכה → התדרדרות לתיקייה מקומית (interactive) / שקט (`--notify`).
+- משווה **content-manifest** (`lib.computeManifest` = `sha256` על `src/`+`VERSION`) מול `.installed-manifest` שנחתם ע"י `install.js` → תופס גם שינוי-תוכן באותה גרסה, לא רק bump.
+- זהה → "עדכני". מקור ישן יותר → מסרב downgrade. אחרת: מדפיס מה השתנה (מ-`upgrade-notes.json`, גרסאות `(installed, target]`) + סעיף "דורש תשומת-לב" (required/optional), ואז `spawnSync(install.js)` (אידמפוטנטי). דגלים: `--check` (dry-run), `--no-remote`, `--source`.
+- **`--notify` (בדיקה יומית):** מושך, משווה, ואם יש גרסה חדשה — toast "עדכון זמין" (או, כש-`update.auto`, מחיל ומתריע "עודכן"). שקט לחלוטין כשעדכני או כש-GitHub לא זמין. מופעל ע"י משימת ה-18:00 דרך `--check-update` ב-`worklog-summary` (spawn detached fail-safe).
 - **creds לא נוגעים:** `.email-cred`/`.calendar-cred` (DPAPI) מחוץ ל-`src` ומחוץ לתחום install → עדכון רגיל לא מבקש דבר.
+
+### `worklog-remote.js` — שכבת המקור המרוחק (v0.9.0)
+- `refreshCache(cfg)` — clone (פעם ראשונה) או `fetch --depth 1` + `reset --hard FETCH_HEAD` (אחר כך) של `update.remote`/`update.branch` ל-cache ייעודי (`~/.claude/work-journal/.src-cache`, shallow single-branch). מחזיר `{ok, reason, bundlePath, head}` — **fail-safe, לעולם לא זורק/תוקע**.
+- **auth:** git NON-interactive (`GIT_TERMINAL_PROMPT=0`, `GCM_INTERACTIVE=Never`) → נשען על ה-credentials הקיימים של המשתמש לקטלוג; ללא creds נכשל מהר. אפס סודות נשמרים אצלנו.
+- **config-driven:** `gitConfig()` קורא `update.{remote,branch,auto}` מ-config (עם defaults — הקטלוג, `main`). על שינוי-remote (origin mismatch, למשל מעבר ל-org) — **משכפל מחדש** את ה-cache.
 
 ### `worklog.js` — dispatcher לטרמינל (v0.8.0)
 - פקודה אחת `worklog.js <verb>` → `spawnSync` (stdio inherit) ל-סקריפט המתאים. פעלים = `/worklog` בצ'אט: `show` (מדפיס יומן היום), `status`/`help`/הגדרות → `worklog-config.js`; `summary`/`week`/`send [email|calendar]` → `worklog-summary.js`; `log "..."` → `worklog-log.js`; `update` → `worklog-update.js`.
@@ -128,7 +135,7 @@
 ### `worklog-schedule.js` — רישום משימות מ-config (משותף ל-install/config/email/calendar)
 - `defaultConfig()` (כולל `language: 'עברית'`), `parseDays()`, `buildRegisterScript(...)` (טהור — בונה את פקודת ה-PowerShell), `registerTasks(...)` (Windows-only — spawn של הפקודה), `describe()` (כולל שורת שפה).
 - רישום = איפוס מלא (Unregister-all → register applicable), כולל ניקוי `WorkJournal-Daily` הישן.
-- בונה: `WorkJournal-Notify` (18:00 א׳–ה׳, קבוע) · `WorkJournal-DailyEmail` (אם email **או** calendar מופעלים) · `WorkJournal-Weekly` (אם email.enabled).
+- בונה: `WorkJournal-Notify` (18:00 א׳–ה׳, קבוע — מעביר `--daily --check-update`, כלומר גם **בדיקת-עדכון יומית**) · `WorkJournal-DailyEmail` (אם email **או** calendar מופעלים) · `WorkJournal-Weekly` (אם email.enabled).
 - **הגדרות מחוסנות (v0.8.3):** `New-ScheduledTaskSettingsSet` עם `-StartWhenAvailable -ExecutionTimeLimit 15m -DontStopIfGoingOnBatteries -AllowStartIfOnBatteries -WakeToRun -RestartCount 3 -RestartInterval 5m`. ברירות-המחדל הישנות הרגו את המשימה על סוללה (`0x8007042B`) ולא ניסו שוב — זה תוקן. החילוץ ל-`buildRegisterScript` הטהור מאפשר unit-test של הדגלים בלי לגעת ב-Task Scheduler.
 
 ### `worklog-blocks.js` — חישוב בלוקים (טהור, 0 AI)

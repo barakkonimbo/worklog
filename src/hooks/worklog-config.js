@@ -44,6 +44,7 @@ function load() {
     email: { ...d.email, ...(c.email || {}) },
     weekly: { ...d.weekly, ...(c.weekly || {}) },
     calendar: { ...d.calendar, ...(c.calendar || {}) },
+    update: { ...d.update, ...(c.update || {}) },
   };
 }
 function save(c) { fs.mkdirSync(ROOT, { recursive: true }); fs.writeFileSync(CONFIG, JSON.stringify(c, null, 2) + '\n', 'utf8'); }
@@ -104,9 +105,10 @@ function help() {
 • שליחה עכשיו לכל יעד מופעל (מייל/יומן)
     צ'אט:    /worklog send  ·  send email  ·  send calendar
     טרמינל:  ${w('send')}  ·  ${w('send email')}  ·  ${w('send calendar')}
-• עדכון מהתיקייה המקומית (בודק תוכן · מסביר · מסמן פעולות)
+• עדכון מ-GitHub (מושך לבד · בודק תוכן · מסביר · מסמן פעולות)
     צ'אט:    /worklog update
-    טרמינל:  ${w('update')}    (תצוגה בלבד: ${w('update --check')})
+    טרמינל:  ${w('update')}    (תצוגה בלבד: ${w('update --check')} · ללא משיכה: ${w('update --no-remote')})
+    בדיקה יומית אוטומטית: ${w('update.auto on')} (מעדכן לבד) / off (מתריע בלבד, ברירת מחדל)
 • מירור היום ליומן שלך (push) / הסרה (unpush) — מירור מלא, לא מחליף את Work Journal
     צ'אט:    /worklog push  ·  /worklog unpush
     טרמינל:  ${w('push')}  ·  ${w('unpush')}    (בחירת יומן-יעד: ${q('worklog-calendar.js')} --push-setup)
@@ -162,6 +164,20 @@ function applyChange(c, key, val) {
     case 'language':
       if (!val || !String(val).trim()) return false;
       c.language = String(val).trim();
+      return true;
+    case 'update.auto': // daily check auto-applies updates (off = notify only)
+      c.update = c.update || {};
+      if (on(val)) c.update.auto = true; else if (off(val)) c.update.auto = false; else return false;
+      return true;
+    case 'update.remote': // git URL to self-update from (e.g. after moving the catalog to an org)
+      if (!val || !String(val).trim()) return false;
+      c.update = c.update || {};
+      c.update.remote = String(val).trim();
+      return true;
+    case 'update.branch':
+      if (!val || !String(val).trim()) return false;
+      c.update = c.update || {};
+      c.update.branch = String(val).trim();
       return true;
     default: return false;
   }
