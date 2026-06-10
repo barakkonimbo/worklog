@@ -59,7 +59,7 @@
 - **בדיקה יומית:** משימת ה-18:00 (Notify, רצה לכולם) מעבירה `--check-update`; `worklog-summary` משגר `worklog-update.js --notify` detached/fail-safe. ברירת מחדל מתריע; `update.auto on` ⇒ מעדכן לבד.
 - **config:** `update.{remote,branch,auto}` ב-defaultConfig + load/applyChange (`update.auto/remote/branch`) + describe + backfill ב-install. `update.remote` מאפשר מעבר ל-org בשינוי-שורה.
 **נבדק:** 6/6 מול ריפו-git לוקלי (ללא רשת/auth): clone · fetch-מעדכן · remote-לא-תקין→fail-safe · שינוי-remote→re-clone · `update --check` end-to-end. bump 0.9.0, D24. (ראה גם זיכרון org-migration pending.)
-**הבא:** build + deploy חי (אימות משיכה אמיתית מהקטלוג) + push לשני הריפו.
+**אומת חי + תיקון 0.9.1:** משיכה אמיתית מהקטלוג הפרטי עבדה (clone של `fcca932` עם git-creds מטמון, NON-interactive). אבל ה-`--check` דיווח "עדכון תוכן באותה גרסה" אף שזהה — כי git checkout ממיר LF→CRLF וה-manifest גיבב בייטים גולמיים → היה גורם לבדיקה היומית להתריע סתם בכל יום. **תיקון (0.9.1):** `computeManifest` מנרמל CRLF→LF לפני ה-hash (זהות-תוכן אמיתית). נבדק EOL-invariance (LF==CRLF). bump 0.9.1.
 
 ### 2026-06-10 — עמידוּת: חיסון המשימות + ריפוי-עצמי ב-SessionStart (v0.8.3)
 **מה הניע:** המשתמש שם לב שלסיכום של 2026-06-09 לא נוצר קובץ, לא נשלח מייל, ולא סונכרן ביומן — אף שהיו רשומות. **אבחון:** `WorkJournal-DailyEmail` כן רצה (18:14, התעוררה באיחור) אך הסתיימה ב-`0x8007042B` (`ERROR_PROCESS_ABORTED`) — נהרגה באמצע יצירת הסיכום. **שורש:** ברירות-המחדל של `New-ScheduledTaskSettingsSet` — `StopIfGoingOnBatteries`+`DisallowStartIfOnBatteries` (סוללה הורגת/חוסמת) ו-`RestartCount=0` (אין retry). הסיכום הוא השלב הראשון → נהרג → הכל נפל.

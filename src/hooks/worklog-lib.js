@@ -124,16 +124,22 @@ function walkFiles(dir) {
   return out;
 }
 
+// Hash file CONTENT independent of line endings: git checks the same file out as CRLF on one machine
+// and LF on another (autocrlf), so hashing raw bytes would make an identical file look "changed" — and
+// the remote update / daily check would misfire on every run. Normalizing CRLF→LF makes the manifest a
+// true content identity. (All manifested files under src/ are text: .js/.md/.json/.tpl.)
+function hashContent(buf) { return sha256(Buffer.from(buf.toString('utf8').replace(/\r\n/g, '\n'), 'utf8')); }
+
 // srcRoot = the folder that contains `src/` and `VERSION` (dev repo root, or a setup bundle).
 function computeManifest(srcRoot) {
   const items = [];
   const srcDir = path.join(srcRoot, 'src');
   for (const f of walkFiles(srcDir)) {
     const rel = path.relative(srcRoot, f).replace(/\\/g, '/');
-    items.push(rel + '\0' + sha256(fs.readFileSync(f)));
+    items.push(rel + '\0' + hashContent(fs.readFileSync(f)));
   }
   const vf = path.join(srcRoot, 'VERSION');
-  if (fs.existsSync(vf)) items.push('VERSION\0' + sha256(fs.readFileSync(vf)));
+  if (fs.existsSync(vf)) items.push('VERSION\0' + hashContent(fs.readFileSync(vf)));
   items.sort();
   return sha256(items.join('\n'));
 }
