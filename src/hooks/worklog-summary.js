@@ -163,7 +163,14 @@ function tryPushCalendar(dateStr) {
 // run. Used to avoid re-sending a day, and to pick the right (possibly earlier) day to send.
 const LAST_SENT = path.join(lib.ROOT, '.email-last-sent');
 function readLastSent() { return (lib.readIf(LAST_SENT) || '').trim() || null; }
-function writeLastSent(dk) { try { fs.writeFileSync(LAST_SENT, dk + '\n', 'utf8'); } catch { /* non-fatal */ } }
+// Monotonic high-water mark: only ever ADVANCE last-sent, never regress it. Backfill (worklog-backfill.js)
+// delivers older missed days with --date; without this guard, delivering 2026-06-07 after 06-09 was sent
+// would rewind the marker and make the scheduler re-send 06-08/06-09. ISO date keys compare as strings.
+function writeLastSent(dk) {
+  const cur = readLastSent();
+  if (cur && dk <= cur) return;
+  try { fs.writeFileSync(LAST_SENT, dk + '\n', 'utf8'); } catch { /* non-fatal */ }
+}
 function addDays(d, n) { const x = new Date(d); x.setDate(x.getDate() + n); return x; }
 // Does this day's raw log have at least one real entry?
 function hasEntries(d) { return lib.hasEntryLine(lib.readIf(lib.dailyFile(d))); }

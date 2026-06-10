@@ -14,7 +14,8 @@
 | רשת ביטחון (SessionEnd) | ✅ הושלם ונבדק |
 | סיכום יומי/שבועי (AI) | ✅ הושלם ונבדק |
 | התראות (Windows toast, לחיצה פותחת סיכום/תיקייה) | ✅ הושלם ונבדק |
-| תזמון (Task Scheduler, מבוסס-config) | ✅ 18:00 התראה · 20:30 מייל · א׳ 08:00 שבועי |
+| תזמון (Task Scheduler, מבוסס-config) | ✅ 18:00 התראה · 20:30 מייל · א׳ 08:00 שבועי · **מחוסן: סוללה/wake/3×retry (v0.8.3)** |
+| עמידוּת — ריפוי-עצמי ב-SessionStart | ✅ נבנה ונבדק (v0.8.3) — `worklog-backfill.js` ברקע משלים יום שתועד אך לא קיבל סיכום (מכונה כבויה/ישנה בשעת הריצה) |
 | שליחת מייל (Gmail, opt-in, DPAPI, **HTML**) | ✅ הושלם ונבדק; מייל HTML אומת ויזואלית (v0.7.4) |
 | הגדרות ניתנות-לשינוי (/worklog + config) | ✅ הושלם ונבדק (round-trip) |
 | מקור קנוני + תיעוד בפרויקט | ✅ הושלם |
@@ -48,6 +49,16 @@
 ---
 
 ## 🗓️ לוג כרונולוגי
+
+### 2026-06-10 — עמידוּת: חיסון המשימות + ריפוי-עצמי ב-SessionStart (v0.8.3)
+**מה הניע:** המשתמש שם לב שלסיכום של 2026-06-09 לא נוצר קובץ, לא נשלח מייל, ולא סונכרן ביומן — אף שהיו רשומות. **אבחון:** `WorkJournal-DailyEmail` כן רצה (18:14, התעוררה באיחור) אך הסתיימה ב-`0x8007042B` (`ERROR_PROCESS_ABORTED`) — נהרגה באמצע יצירת הסיכום. **שורש:** ברירות-המחדל של `New-ScheduledTaskSettingsSet` — `StopIfGoingOnBatteries`+`DisallowStartIfOnBatteries` (סוללה הורגת/חוסמת) ו-`RestartCount=0` (אין retry). הסיכום הוא השלב הראשון → נהרג → הכל נפל.
+**נעשה (שתי שכבות):**
+- **שכבה 1 — חיסון המשימה (`worklog-schedule.js`):** ל-`$set` נוספו `-DontStopIfGoingOnBatteries -AllowStartIfOnBatteries -WakeToRun -RestartCount 3 -RestartInterval 5m` (נשמרו `-StartWhenAvailable`+`-ExecutionTimeLimit`). חולץ `buildRegisterScript` טהור (registerTasks רק spawn) כדי שניתן יהיה ל-unit-test בלי לגעת ב-Task Scheduler.
+- **שכבה 2 — ריפוי-עצמי (`worklog-backfill.js`, hook #14):** `SessionStart` מפעיל אותו **detached + stdio ignore + try/catch**. סורק 3 ימים אחורה (לא כולל היום), מאתר "רשומות יש אך קובץ-סיכום אין", ומריץ `worklog-summary --daily --date <יום> --email` (אותה קריאה כמו המתוזמן → סיכום+מייל+יומן+last-sent). נעילת-cooldown 5ד׳ מונעת ריצה כפולה.
+- **`writeLastSent` מונוטוני** — מתקדם בלבד, כדי ש-backfill של יום ישן לא ירווין את הסמן ויגרום שליחה-חוזרת.
+**למה ה-catch-up הקיים לא הספיק:** `pickDeliverDay` מסתכל יום-אחד-אחורה ורק כשמייל מופעל; לסיכום-קובץ ולסנכרון-יומן לא הייתה רשת עצמאית. שכבה 2 מכסה את שלושתם, ללא תלות בשעון.
+**נבדק:** 12/12 בדיקות מבודדות (`test-v083.js`, temp HOME + claude-stub נכשל→fallback, 0 טוקנים): דגלי-חיסון · gating per-config · `findMissedDays` (אתמול/חלון/סדר/ריק) · e2e backfill כותב סיכום חסר · אידמפוטנטיות · cooldown. bump 0.8.3, D23.
+**הבא:** build + deploy חי (כולל רישום-מחדש של המשימות המחוסנות) + push לשני הריפו + backfill של 2026-06-09.
 
 ### 2026-06-08 — מירור היום ליומן שלך (push/unpush + autoPush) + תיקון ציר-זמן (v0.8.2)
 **נעשה:**

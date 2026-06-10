@@ -145,6 +145,15 @@ loopback, refresh token **מוצפן DPAPI** (כמו D11/D6). (ד) **טריגר 
 - **הצעה opt-in ב-update/install** עם המסר המחייב: *"לא מחליף את Work Journal, רק מוסיף מירור ליומן שלך"* — בעקבות בקשת המשתמש לא להשאיר את זה מעורפל.
 **השלכה:** `syncDay(dateStr, {calId})` מוכלל; `--push`/`--unpush`/`--push-setup`/`--list-calendars`; `worklog-summary` קורא `tryPushCalendar` כש-`autoPushEnabled()`; סקיל §10 + dispatcher + config. נבדק לא-הרסני (config round-trip + `--list-calendars` חי); push חי לא הורץ ביוזמתי. (גם תוקן: "ציר זמן" בסיכום בלי שעות/דקות, בקשת משתמש.)
 
+## D23 — עמידוּת: חיסון המשימות + ריפוי-עצמי ב-SessionStart
+**הקשר:** ב-2026-06-09 לא נוצר סיכום יומי — לא נכתב קובץ, לא נשלח מייל, לא סונכרן יומן — למרות שהיו רשומות. אבחון: המשימה `WorkJournal-DailyEmail` כן רצה (18:14, אחרי שהמכונה התעוררה באיחור) אבל הסתיימה עם `0x8007042B` (`ERROR_PROCESS_ABORTED`) — התהליך נהרג באמצע יצירת הסיכום. השורש: ברירות-המחדל של `New-ScheduledTaskSettingsSet` כללו `StopIfGoingOnBatteries`+`DisallowStartIfOnBatteries` (סוללה הורגת/חוסמת את המשימה) ו-`RestartCount=0` (אין ניסיון חוזר). יצירת הסיכום היא השלב הראשון, אז כשהוא נהרג — הכל נופל יחד.
+**הנמקה / שתי שכבות (אי-אפשר להבטיח שמכונה דולקת-ושקעית בשעה קבועה):**
+- **שכבה 1 — חיסון המשימה (תוקף את ה-abort עצמו):** `-DontStopIfGoingOnBatteries -AllowStartIfOnBatteries` (לא נהרג/נחסם על סוללה) · `-WakeToRun` (מעיר משינה ל-18:00) · `-RestartCount 3 -RestartInterval 5m` (ריצה שנכשלה מנסה שוב). `-StartWhenAvailable` נשמר (ריצה מאוחרת אם הוחמצה). חולץ ל-`buildRegisterScript` טהור כדי שיהיה ניתן ל-unit-test בלי לגעת ב-Task Scheduler האמיתי.
+- **שכבה 2 — ריפוי-עצמי (רשת ביטחון לכל מה שעדיין הוחמץ):** hook חדש `worklog-backfill.js` ש-`SessionStart` מפעיל **detached + stdio ignore + try/catch** (לעולם לא חוסם/מדליף ל-stdout). סורק 3 ימים אחורה (לא כולל היום), מאתר "יום עם רשומות אך בלי קובץ סיכום", ומריץ `worklog-summary --daily --date <יום> --email` — אותה קריאה כמו המתוזמן (סיכום+מייל+יומן+`last-sent`). מכיוון שסשן אמיתי = מכונה דולקת, זה תופס כל פספוס. נעילת-cooldown (`.backfill.lock`, 5ד׳) מונעת ריצה כפולה בּבּרסט.
+- **`writeLastSent` מונוטוני:** מתקדם בלבד, לעולם לא נסוג. בלי זה, backfill של יום ישן (אחרי שיום חדש נשלח) היה מרווין את הסמן וגורם לשליחה-חוזרת. ISO-keys משווים כמחרוזות.
+**מדוע ה-catch-up הקיים לא הספיק:** catch-up המייל (`pickDeliverDay`) מסתכל יום אחד אחורה בלבד ורק כשמייל מופעל; לסיכום-כקובץ ולסנכרון-היומן לא הייתה רשת עצמאית. שכבה 2 מכסה את שלושתם, בלי תלות בתזמון.
+**השלכה / בדיקות:** hook #14 (`worklog-backfill.js`). 12/12 בדיקות מבודדות (temp HOME + claude-stub נכשל→fallback, 0 טוקנים): דגלי-חיסון בפקודת הרישום · gating per-config · `findMissedDays` (אתמול/חלון/סדר/ריק) · e2e backfill כותב סיכום חסר · אידמפוטנטיות · נעילת-cooldown. **לקח:** משימה מתוזמנת על לפטופ היא best-effort — צריך גם רשת-ביטחון שמופעלת ע"י נוכחות המשתמש (סשן), לא רק ע"י שעון.
+
 ---
 
 ## מלכודות פתוחות / לשים לב בהמשך

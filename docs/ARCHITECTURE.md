@@ -64,6 +64,7 @@
 - בונה הקשר (≤ ~9500 תווים, מגבלת `additionalContext` היא 10k): הוראת תיעוד + הפקודה המדויקת
   (נבנית דינמית מ-`process.execPath` ו-`__dirname` → **ניתן-להעברה**) + יומן היום (≤6000) + אתמול (≤1500).
 - מחזיר `{"hookSpecificOutput":{"hookEventName":"SessionStart","additionalContext":"…"}}` ב-stdout, exit 0.
+- **ריפוי-עצמי (v0.8.3):** מפעיל `worklog-backfill.js` ברקע — `spawn(detached, stdio:'ignore', windowsHide).unref()`, עטוף ב-try/catch. **חייב לא לכתוב ל-stdout** (ה-stdout של ההוק מוזרק כקונטקסט) ולא לחסום — לכן detached. רץ אחרי ה-recursion guard, אז headless-runs (`WORKLOG_DISABLE=1`) לא מפעילים אותו.
 
 ### `worklog-prompt.js` — hook UserPromptSubmit (שכבת פעילות, v0.7.6)
 - רץ **לפני כל מענה**. **Recursion guard** זהה (`WORKLOG_DISABLE=1` → יוצא).
@@ -90,6 +91,13 @@
 - **דליברי:** `want.deliver = --deliver || --email`; `deliverEmail`/`deliverCalendar` נגזרים מ-`--only`. שולח **רק ליעד מופעל**. 18:00 רץ בלי דליברי (ביניים); 20:30 עם `--email` (סופי). **גארד:** אם אין רשומות היום → נכתב placeholder, ו**אין** דליברי.
 - שבועי: אוסף את **7 הימים שקדמו להיום** (עד אתמול) — "השבוע שעבר" כשרץ ראשון בבוקר. כולל חלק "נשאר פתוח".
 - אחרי הכתיבה: `worklog-notify.js` (התראה לחיצה; הכותרת משקפת 📧/🗓️ כשנשלח) + `worklog-email.js` (אם דליברי-מייל ומופעל) + `worklog-calendar.js --sync` (spawn נפרד fail-safe, אם דליברי-יומן ומופעל).
+- **`last-sent` מונוטוני (v0.8.3):** `writeLastSent` מתקדם בלבד ולעולם לא נסוג — כך ש-backfill של יום ישן (אחרי שיום חדש כבר נשלח) לא מרווין את הסמן ולא גורם לשליחה-חוזרת של ימים שכבר נשלחו.
+
+### `worklog-backfill.js` — ריפוי-עצמי (v0.8.3)
+- **למה:** הריצה המתוזמנת עלולה להיות מוחמצת או **נהרגת באמצע** (לפטופ ישן/על סוללה/כבוי → Windows נותן `0x8007042B`). אז הסיכום לא נכתב, וממילא לא נשלח מייל ולא סונכרן יומן — פער שקט.
+- **מתי:** מופעל ע"י `worklog-session-start.js` ברקע (detached, fail-safe). סשן אמיתי = מכונה דולקת → תופס מה שהשעון פספס.
+- **מה:** `findMissedDays(baseDate, lookback=3)` (פונקציה טהורה, מיוצאת לבדיקות) מחזיר ימים ב-[היום-3, היום-1] שיש להם רשומות אך **אין** קובץ-סיכום, מהישן לחדש (היום מוחרג — בבעלות הריצה המתוזמנת). לכל יום כזה: `spawnSync` של `worklog-summary.js --daily --date <יום> --email` — אותה קריאה כמו המתוזמן, אז סיכום+מייל+יומן+`last-sent` משותפים. יום מסוכּם פעם אחת בלבד (אחרי backfill הקובץ קיים → לא מאותר שוב).
+- **דה-דופ/בטיחות:** נעילת-cooldown `.backfill.lock` (5ד׳) חוסמת ריצה כפולה ב-burst (שני סשנים נפתחים יחד). `--list` = dry-run; `--days N` = override חלון. Recursion-guard על `WORKLOG_DISABLE`.
 
 ### `worklog-notify.js` — התראת toast לחיצה
 - Windows: WinRT toast תחת ה-AppId של PowerShell (ללא מודול/רישום). מקבל `title, message, launchPath`.
@@ -118,9 +126,10 @@
 - **תוספת נוחות לבני-אדם בלבד** — ה-skill וה-tasks ממשיכים לקרוא ישירות לסקריפטים הספציפיים. `uninstall` תופס אותו דרך תבנית `worklog*.js`.
 
 ### `worklog-schedule.js` — רישום משימות מ-config (משותף ל-install/config/email/calendar)
-- `defaultConfig()` (כולל `language: 'עברית'`), `parseDays()`, `registerTasks(...)`, `describe()` (כולל שורת שפה).
+- `defaultConfig()` (כולל `language: 'עברית'`), `parseDays()`, `buildRegisterScript(...)` (טהור — בונה את פקודת ה-PowerShell), `registerTasks(...)` (Windows-only — spawn של הפקודה), `describe()` (כולל שורת שפה).
 - רישום = איפוס מלא (Unregister-all → register applicable), כולל ניקוי `WorkJournal-Daily` הישן.
 - בונה: `WorkJournal-Notify` (18:00 א׳–ה׳, קבוע) · `WorkJournal-DailyEmail` (אם email **או** calendar מופעלים) · `WorkJournal-Weekly` (אם email.enabled).
+- **הגדרות מחוסנות (v0.8.3):** `New-ScheduledTaskSettingsSet` עם `-StartWhenAvailable -ExecutionTimeLimit 15m -DontStopIfGoingOnBatteries -AllowStartIfOnBatteries -WakeToRun -RestartCount 3 -RestartInterval 5m`. ברירות-המחדל הישנות הרגו את המשימה על סוללה (`0x8007042B`) ולא ניסו שוב — זה תוקן. החילוץ ל-`buildRegisterScript` הטהור מאפשר unit-test של הדגלים בלי לגעת ב-Task Scheduler.
 
 ### `worklog-blocks.js` — חישוב בלוקים (טהור, 0 AI)
 - `computeBlocks(sessions, entries, {maxGap,minBlock,activity,activityGap,tail})` → בלוקים; ללא I/O; `dedupeSessions` ל-E5; `streaksOf`/`streaksOfActivity` + `mergeAndFormat` משותפים. **שני מסלולים, נבחרים אוטומטית:**

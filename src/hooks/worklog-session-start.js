@@ -52,6 +52,20 @@ if (sid) {
   }
 }
 
+// --- self-heal (v0.8.3): backfill any recent day that has entries but no summary ---
+// The scheduled end-of-day run can be killed mid-generation (laptop asleep/on-battery → 0x8007042B),
+// leaving a day with no summary, no email, no calendar. A real session means the machine is on, so we
+// regenerate + deliver the missed day in the BACKGROUND. Detached + stdio ignored + try/catch so it can
+// never block session start nor leak to stdout (this hook's stdout is injected as session context).
+try {
+  const { spawn } = require('child_process');
+  const backfill = path.join(__dirname, 'worklog-backfill.js');
+  if (fs.existsSync(backfill)) {
+    const child = spawn(process.execPath, [backfill], { detached: true, stdio: 'ignore', windowsHide: true });
+    child.unref();
+  }
+} catch { /* non-fatal */ }
+
 // --- build injected context (cap ~9000 chars; additionalContext limit is 10k) ---
 const node = toFwd(process.execPath);
 const logScript = toFwd(path.join(__dirname, 'worklog-log.js'));

@@ -4,7 +4,7 @@
 פרויקט), ומפיקה **סיכום AI** — יומי ושבועי. עם **התראה לחיצה**, **מייל אופציונלי**, ו**סנכרון Google Calendar** (אופציונלי).
 הכול נשמר **מקומית** אצלך, באף שרת.
 
-`גרסה 0.8.2` · `Windows (mac/Linux חלקי)` · `ללא תלות חיצונית (Node + Claude CLI)`
+`גרסה 0.8.3` · `Windows (mac/Linux חלקי)` · `ללא תלות חיצונית (Node + Claude CLI)`
 
 ---
 
@@ -87,6 +87,10 @@ node "%USERPROFILE%\.claude\hooks\worklog-config.js" weekly.day Sunday weekly.ti
 
 מודל שני-שלבי: קודם בוחרים אם מייל פעיל בכלל (ברירת מחדל כבוי); אם כן — ברירת מחדל **או** שעות/ימים אישיים.
 
+**עמידוּת (0.8.3):** המשימות רצות גם על סוללה, מעירות את המכונה משינה, ומנסות שוב ×3 אם ריצה נכשלה.
+ובנוסף — בכל פתיחת סשן רץ ברקע `worklog-backfill.js`: אם יום אחרון תועד אך לא נוצר לו סיכום (כי המכונה
+הייתה כבויה/ישנה בשעת הריצה), הוא מיוצר ונשלח אוטומטית. כך אף יום לא נופל בין הכיסאות.
+
 ---
 
 ## מבנה הפרויקט
@@ -99,7 +103,7 @@ work-journal/
 ├── docs/
 │   ├── SUMMARY.md         ← סיכום מלא: מה בנינו ולמה  ← התחל כאן
 │   ├── ARCHITECTURE.md    ← איך זה עובד (טכני, קובץ-קובץ)
-│   ├── DECISIONS.md       ← החלטות תכנון D1–D17 + מלכודות
+│   ├── DECISIONS.md       ← החלטות תכנון D1–D23 + מלכודות
 │   ├── PROGRESS.md        ← יומן התקדמות חי (מתעדכן כל סשן)
 │   ├── DISTRIBUTION.md    ← איך אורזים ומפיצים
 │   └── SEND-TO-TEAMMATE.md← מדריך תפעולי לשליחה ובדיקה אצל חבר צוות
@@ -109,7 +113,7 @@ work-journal/
 │   ├── install.js         ← installer נייד ואידמפוטנטי
 │   └── uninstall.js       ← הסרה (+--purge)
 ├── src/                   ← מקור קנוני (נפרס ל-~/.claude/)
-│   ├── hooks/             ← lib · log · prompt · session-start · session-end · summary · notify · email · config · schedule · blocks · calendar · format
+│   ├── hooks/             ← lib · log · prompt · session-start · session-end · summary · backfill · notify · email · config · schedule · blocks · calendar · format
 │   ├── skill/SKILL.tpl.md ← skill /worklog (תבנית; install מחליף נתיבים)
 │   └── templates/         ← בלוק CLAUDE.md + רשומות hooks ל-settings.json
 └── dist/                  ← תוצר build: work-journal-setup/ + .zip (להפצה)
@@ -119,7 +123,7 @@ work-journal/
 
 ## איך זה עובד (בקצרה)
 
-- **תיעוד** מבוסס hooks: `SessionStart` מזריק את היומן + הוראת תיעוד; `SessionEnd` הוא רשת ביטחון.
+- **תיעוד** מבוסס hooks: `SessionStart` מזריק את היומן + הוראת תיעוד (וגם מפעיל ברקע ריפוי-עצמי של ימים שפוספסו); `SessionEnd` הוא רשת ביטחון.
 - **סיכום** דרך `claude -p` (headless, `WORKLOG_DISABLE=1` למניעת רקורסיה); **node כותב את הקובץ**,
   ואם קלוד לא זמין יש fallback מקבץ-לפי-פרויקט.
 - **תזמון** דרך Windows Task Scheduler, מבוסס `config.json` (worklog-schedule.js).

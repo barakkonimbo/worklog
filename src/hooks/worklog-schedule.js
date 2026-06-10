@@ -81,9 +81,9 @@ function describe(config) {
   return lines.join('\n');
 }
 
-// Register tasks from config. Windows-only; returns { ok, stderr, reason }.
-function registerTasks({ node, summaryScript, config }) {
-  if (process.platform !== 'win32') return { ok: false, reason: 'not-windows' };
+// Build the PowerShell command that (re)registers the tasks for a config. Pure (no side effects) so it
+// can be unit-tested without touching the real Task Scheduler. registerTasks() spawns the result.
+function buildRegisterScript({ node, summaryScript, config }) {
   const c = config || defaultConfig();
   const q = (s) => String(s).replace(/'/g, "''");
 
@@ -96,7 +96,15 @@ function registerTasks({ node, summaryScript, config }) {
   const lines = [
     "$node='" + q(node) + "'",
     "$script='" + q(summaryScript) + "'",
-    "$set=New-ScheduledTaskSettingsSet -StartWhenAvailable -ExecutionTimeLimit (New-TimeSpan -Minutes 15)",
+    // Resilience (v0.8.3): a laptop is rarely awake-and-plugged at exactly the run time.
+    //   -StartWhenAvailable        run a missed trigger as soon as the machine is next awake
+    //   -WakeToRun                 wake from sleep to run at the scheduled time
+    //   -DontStopIfGoingOnBatteries / -AllowStartIfOnBatteries
+    //                              the old defaults KILLED the task on battery mid-run (→ 0x8007042B,
+    //                              ERROR_PROCESS_ABORTED: summary half-generated, nothing sent)
+    //   -RestartCount/-RestartInterval  if a run still fails (abort/crash), retry up to 3× every 5 min
+    // The session-start backfill (worklog-backfill.js) is the final safety net for anything still missed.
+    "$set=New-ScheduledTaskSettingsSet -StartWhenAvailable -ExecutionTimeLimit (New-TimeSpan -Minutes 15) -DontStopIfGoingOnBatteries -AllowStartIfOnBatteries -WakeToRun -RestartCount 3 -RestartInterval (New-TimeSpan -Minutes 5)",
     // full reset so toggling off actually removes tasks (and clears the legacy WorkJournal-Daily)
     'Unregister-ScheduledTask -TaskName ' + ALL_TASKS.map((t) => "'" + t + "'").join(',') + ' -Confirm:$false -ErrorAction SilentlyContinue',
     // fixed interim notification (everyone)
@@ -113,9 +121,15 @@ function registerTasks({ node, summaryScript, config }) {
     lines.push(task('WorkJournal-Weekly', '--weekly --email', (c.weekly && c.weekly.time) || '08:00', parseDays([(c.weekly && c.weekly.day) || 'Sunday']), 'Weekly recap + email'));
   }
   lines.push("Write-Output 'ok'");
+  return lines.join('; ');
+}
 
-  const r = spawnSync('powershell', ['-NoProfile', '-NonInteractive', '-Command', lines.join('; ')], { encoding: 'utf8' });
+// Register tasks from config. Windows-only; returns { ok, stderr, reason }.
+function registerTasks({ node, summaryScript, config }) {
+  if (process.platform !== 'win32') return { ok: false, reason: 'not-windows' };
+  const command = buildRegisterScript({ node, summaryScript, config });
+  const r = spawnSync('powershell', ['-NoProfile', '-NonInteractive', '-Command', command], { encoding: 'utf8' });
   return { ok: r.status === 0, stderr: (r.stderr || r.stdout || '').trim() };
 }
 
-module.exports = { defaultConfig, registerTasks, parseDays, describe, ALL_TASKS };
+module.exports = { defaultConfig, registerTasks, buildRegisterScript, parseDays, describe, ALL_TASKS };
